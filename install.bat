@@ -8,6 +8,24 @@
 echo WARNING: This script relies on Micromamba which may have issues on some systems when installed under a path with spaces.
 echo          May also have issues with long paths.&& echo.
 
+@rem Figure out if Python is installed and is one of the supported versions:
+set python_exists=F
+call python --version >nul 2>&1
+if "%ERRORLEVEL%" EQU "0" set python_exists=T
+if "%python_exists%" == "F" (
+    echo You need to have Python version 3.7 to 3.10 installed and in your PATH.
+    echo Note: Python 3.11 is not yet supported by the numba package!
+    echo Install Python 3.10 using the Windows installer from python.org,
+    echo and ensure that the Checkbox "install python.exe into the PATH" is checked!
+    exit 5
+)
+if not call python -c "import sys;exit(sys.version_info[1] not in [7,9,10])" (
+    echo The python.exe in your PATH need to be Python version 3.7 to 3.10!
+    echo Note: Python 3.11 is not yet supported by the numba package:
+    python -c "import sys;print(sys.version)"
+    exit 4
+)
+
 echo What is your GPU?
 echo.
 echo A) NVIDIA
