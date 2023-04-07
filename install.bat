@@ -8,6 +8,9 @@
 echo WARNING: This script relies on Micromamba which may have issues on some systems when installed under a path with spaces.
 echo          May also have issues with long paths.&& echo.
 
+pause
+cls
+
 echo What is your GPU?
 echo.
 echo A) NVIDIA
