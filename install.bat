@@ -102,16 +102,16 @@ if not exist repositories\ (
 cd repositories || goto end
 if not exist GPTQ-for-LLaMa\ (
   git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda
-  )
+)
 
-if not exist "%INSTALL_ENV_DIR%\lib\site-packages\quant_cuda*" (
 cd GPTQ-for-LLaMa || goto end
 call python -m pip install -r requirements.txt
-call python setup_cuda.py install
-if not exist "%INSTALL_ENV_DIR%\lib\site-packages\quant_cuda*" (
+if not exist "%INSTALL_ENV_DIR%\lib\site-packages\quant_cuda-0.0.0-py3.10-win-amd64.egg" (
+    call python setup_cuda.py install
+)
+if not exist "%INSTALL_ENV_DIR%\lib\site-packages\quant_cuda-0.0.0-py3.10-win-amd64.egg" (
   echo CUDA kernel compilation failed. Will try to install from wheel.
   call python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl || ( echo. && echo Wheel installation failed. && goto end )
-)
 )
 
 :end
