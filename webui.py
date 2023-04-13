@@ -81,20 +81,25 @@ def install_dependencies():
     os.chdir("repositories")
     if not os.path.exists("GPTQ-for-LLaMa/"):
         run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda")
-        os.chdir("GPTQ-for-LLaMa")
-        run_cmd("python -m pip install -r requirements.txt")
+    
+    # Install GPTQ-for-LLaMa dependencies
+    os.chdir("GPTQ-for-LLaMa")
+    run_cmd("python -m pip install -r requirements.txt")
+    
+    # If the path does not exist, then try to install
+    quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
+    if not glob.glob(quant_cuda_path_regex):
         run_cmd("python setup_cuda.py install")
-        
-        # If the path does not exist, then the install failed
-        quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
-        if not glob.glob(quant_cuda_path_regex):
-            print("CUDA kernel compilation failed.")
-            # Attempt installation via alternative, Windows-specific method
-            if sys.platform.startswith("win"):
-                print("Attempting installation with wheel.")
-                result = run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl")
-                if result.returncode == 1:
-                    print("Wheel installation failed.")
+    
+    # If the path still does not exist, then the install failed
+    if not glob.glob(quant_cuda_path_regex):
+        print("CUDA kernel compilation failed.")
+        # Attempt installation via alternative, Windows-specific method
+        if sys.platform.startswith("win"):
+            print("Attempting installation with wheel.")
+            result = run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl")
+            if result.returncode == 1:
+                print("Wheel installation failed.")
 
 def update_dependencies():
     os.chdir("text-generation-webui")
@@ -105,7 +110,8 @@ def update_dependencies():
     extensions = next(os.walk("extensions"))[1]
     for extension in extensions:
         extension_req_path = os.path.join("extensions", extension, "requirements.txt")
-        run_cmd("python -m pip install -r " + extension_req_path + " --upgrade")
+        if os.path.exists(extension_req_path):
+            run_cmd("python -m pip install -r " + extension_req_path + " --upgrade")
 
 def download_model():
     os.chdir("text-generation-webui")
