@@ -66,7 +66,7 @@ if "%PACKAGES_TO_INSTALL%" NEQ "" (
     @rem create the installer env
     if not exist "%INSTALL_ENV_DIR%" (
       echo Packages to install: %PACKAGES_TO_INSTALL%
-      call "%MAMBA_ROOT_PREFIX%\micromamba.exe" create -y --prefix "%INSTALL_ENV_DIR%" %CHANNEL% %PACKAGES_TO_INSTALL% || ( echo. && echo Conda environment creation failed. && goto end )
+      call "%MAMBA_ROOT_PREFIX%\micromamba.exe" create -y --no-shortcuts --prefix "%INSTALL_ENV_DIR%" %CHANNEL% %PACKAGES_TO_INSTALL% || ( echo. && echo Conda environment creation failed. && goto end )
     )
 )
 
