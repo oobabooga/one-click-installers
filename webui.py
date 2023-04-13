@@ -148,6 +148,9 @@ if __name__ == "__main__":
     if not os.path.exists("text-generation-webui/"):
         install_dependencies()
         os.chdir(script_dir)
+    
+    # Check if a model has been downloaded yet
+    if len(glob.glob("text-generation-webui/models/*/")) == 0:
         download_model()
         os.chdir(script_dir)
 
