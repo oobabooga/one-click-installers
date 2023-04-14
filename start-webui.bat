@@ -4,16 +4,14 @@
 
 cd /D "%~dp0"
 
-set MAMBA_ROOT_PREFIX=%cd%\installer_files\mamba
 set INSTALL_ENV_DIR=%cd%\installer_files\env
+set MINICONDA_DIR=%cd%\installer_files\miniconda3
 
-if not exist "%MAMBA_ROOT_PREFIX%\condabin\micromamba.bat" (
-  call "%MAMBA_ROOT_PREFIX%\micromamba.exe" shell hook >nul 2>&1
-)
-call "%MAMBA_ROOT_PREFIX%\condabin\micromamba.bat" activate "%INSTALL_ENV_DIR%" || ( echo MicroMamba hook not found. && goto end )
+if not exist "%MINICONDA_DIR%\Scripts\activate.bat" ( echo Miniconda not found. && goto end )
+call "%MINICONDA_DIR%\Scripts\activate.bat" activate "%INSTALL_ENV_DIR%"
 cd text-generation-webui
 
-call python server.py --auto-devices --chat
+call python server.py --auto-devices --cai-chat
 
 :end
 pause
