@@ -19,7 +19,7 @@ set /p "gpuchoice=Input> "
 set gpuchoice=%gpuchoice:~0,1%
 
 if /I "%gpuchoice%" == "A" (
-  set "PACKAGES_TO_INSTALL=python=3.10.9 pytorch[version=2,build=py3.10_cuda11.7*] torchvision torchaudio pytorch-cuda=11.7 cuda-toolkit ninja git"
+  set "PACKAGES_TO_INSTALL=pytorch[version=2,build=py3.10_cuda11.7*] torchvision torchaudio pytorch-cuda=11.7 cuda-toolkit ninja git"
   set "CHANNEL=-c pytorch -c nvidia/label/cuda-11.7.0 -c nvidia -c conda-forge"
 ) else if /I "%gpuchoice%" == "B" (
   set "PACKAGES_TO_INSTALL=pytorch torchvision torchaudio cpuonly git"
@@ -33,7 +33,7 @@ set PATH=%PATH%;%SystemRoot%\system32
 
 set MINICONDA_DIR=%cd%\installer_files\miniconda3
 set INSTALL_ENV_DIR=%cd%\installer_files\env
-set MINICONDA_DOWNLOAD_URL=https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe
+set MINICONDA_DOWNLOAD_URL=https://repo.anaconda.com/miniconda/Miniconda3-py310_23.1.0-1-Windows-x86_64.exe
 set REPO_URL=https://github.com/oobabooga/text-generation-webui.git
 
 if not exist "%MINICONDA_DIR%\Scripts\conda.exe" (
@@ -43,8 +43,8 @@ if not exist "%MINICONDA_DIR%\Scripts\conda.exe" (
 
   @rem install miniconda
   echo. && echo Installing Miniconda To "%MINICONDA_DIR%" && echo Please Wait... && echo.
-  start "" /W /D "%cd%" "Miniconda3-latest-Windows-x86_64.exe" /InstallationType=JustMe /NoShortcuts=1 /AddToPath=0 /RegisterPython=0 /NoRegistry=1 /S /D=%MINICONDA_DIR% || ( echo. && echo Miniconda installer not found. && goto end )
-  del /q "Miniconda3-latest-Windows-x86_64.exe"
+  start "" /W /D "%cd%" "Miniconda3-py310_23.1.0-1-Windows-x86_64.exe" /InstallationType=JustMe /NoShortcuts=1 /AddToPath=0 /RegisterPython=0 /NoRegistry=1 /S /D=%MINICONDA_DIR% || ( echo. && echo Miniconda installer not found. && goto end )
+  del /q "Miniconda3-py310_23.1.0-1-Windows-x86_64.exe"
   if not exist "%MINICONDA_DIR%\Scripts\activate.bat" ( echo. && echo Miniconda install failed. && goto end )
 )
 
@@ -92,7 +92,7 @@ if not exist GPTQ-for-LLaMa\ (
   cd GPTQ-for-LLaMa || goto end
   call python -m pip install -r requirements.txt
   call python setup_cuda.py install
-  if not exist "%INSTALL_ENV_DIR%\lib\site-packages\quant_cuda-0.0.0-py3.10-win-amd64.egg" (
+  if not exist "%INSTALL_ENV_DIR%\lib\site-packages\quant_cuda*" (
     echo CUDA kernal compilation failed. Will try to install from wheel.
     call python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl || ( echo. && echo Wheel installation failed. && goto end )
   )
