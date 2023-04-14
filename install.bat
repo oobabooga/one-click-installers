@@ -9,8 +9,9 @@ echo WARNING: This script relies on Micromamba which may have issues on some sys
 echo          May also have issues with long paths.&& echo.
 
 pause
-cls
 
+:loop
+cls
 echo What is your GPU?
 echo.
 echo A) NVIDIA
@@ -18,6 +19,16 @@ echo B) None (I want to run in CPU mode)
 echo.
 set /p "gpuchoice=Input> "
 set gpuchoice=%gpuchoice:~0,1%
+if /i "%gpuchoice%"=="A" goto end
+if /i "%gpuchoice%"=="B" goto end
+echo.
+echo Invalid choice. Please select either A or B.
+echo.
+pause
+goto loop
+
+:end
+echo You have chosen: %gpuchoice%
 
 if /I "%gpuchoice%" == "A" (
     set "PACKAGES_TO_INSTALL=python=3.10.9 pytorch[version=2,build=py3.10_cuda11.7*] torchvision torchaudio pytorch-cuda=11.7 cuda-toolkit ninja git"
