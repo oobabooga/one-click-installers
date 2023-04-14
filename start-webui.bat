@@ -11,7 +11,7 @@ if not exist "%MINICONDA_DIR%\Scripts\activate.bat" ( echo Miniconda not found. 
 call "%MINICONDA_DIR%\Scripts\activate.bat" activate "%INSTALL_ENV_DIR%"
 cd text-generation-webui
 
-call python server.py --auto-devices --cai-chat
+call python server.py --auto-devices --chat
 
 :end
 pause
