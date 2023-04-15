@@ -83,7 +83,7 @@ call python -m pip install -r extensions\silero_tts\requirements.txt --upgrade
 call python -m pip install -r extensions\whisper_stt\requirements.txt --upgrade
 
 @rem skip gptq install if cpu only
-if /I not "%gpuchoice%" == "A" goto bandaid
+if /I not "%gpuchoice%" == "A" goto end
 
 @rem download gptq and compile locally and if compile fails, install from wheel
 if not exist repositories\ (
