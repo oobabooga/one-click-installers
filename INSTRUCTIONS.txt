@@ -16,4 +16,3 @@ May need to delete '\text-generation-webui\repositories\GPTQ-for-LLaMa' folder i
 You can open a command-line attached to the virtual environment by running the "miniconda-cmd" script.
 
 This installer uses a custom-built Windows-compatible version of bitsandbytes. Source: https://github.com/acpopescu/bitsandbytes/tree/cmake_windows
-When starting the webui, you may encounter an error referencing cuda 116. Starting the webui again should allow bitsandbytes to detect the correct version.
