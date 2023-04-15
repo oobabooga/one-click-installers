@@ -63,6 +63,9 @@ if not exist "%INSTALL_ENV_DIR%\python.exe" ( echo. && echo Conda environment is
 @rem activate installer env
 call conda activate "%INSTALL_ENV_DIR%" || ( echo. && echo Conda environment activation failed. && goto end )
 
+@rem set default cuda toolkit to the one in the environment
+set "CUDA_PATH=%INSTALL_ENV_DIR%"
+
 @rem clone the repository and install the pip requirements
 if exist text-generation-webui\ (
   cd text-generation-webui
