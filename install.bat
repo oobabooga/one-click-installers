@@ -54,7 +54,7 @@ call "%MINICONDA_DIR%\Scripts\activate.bat" || ( echo Miniconda hook not found. 
 @rem create the installer env
 if not exist "%INSTALL_ENV_DIR%" (
   echo Packages to install: %PACKAGES_TO_INSTALL%
-  call conda create --no-shortcuts -y -p "%INSTALL_ENV_DIR%" %CHANNEL% %PACKAGES_TO_INSTALL% || ( echo. && echo Conda environment creation failed. && goto end )
+  call conda create --no-shortcuts -y -k -p "%INSTALL_ENV_DIR%" %CHANNEL% %PACKAGES_TO_INSTALL% || ( echo. && echo Conda environment creation failed. && goto end )
 )
 
 @rem check if conda environment was actually created
