@@ -14,7 +14,7 @@ esac
 INSTALL_DIR="$(pwd)/installer_files"
 CONDA_ROOT_PREFIX="$(pwd)/installer_files/conda"
 INSTALL_ENV_DIR="$(pwd)/installer_files/env"
-MINICONDA_DOWNLOAD_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-${OS_ARCH}.sh"
+MINICONDA_DOWNLOAD_URL="https://repo.anaconda.com/miniconda/Miniconda3-py310_23.1.0-1-MacOSX-${OS_ARCH}.sh"
 conda_exists="F"
 
 # figure out whether git and conda needs to be installed
@@ -38,7 +38,7 @@ fi
 
 # create the installer env
 if [ ! -e "$INSTALL_ENV_DIR" ]; then
-    "$CONDA_ROOT_PREFIX/bin/conda" create -y --prefix "$INSTALL_ENV_DIR" python=3.10.9
+    "$CONDA_ROOT_PREFIX/bin/conda" create -y -k --prefix "$INSTALL_ENV_DIR" python=3.10
 fi
 
 # check if conda environment was actually created
