@@ -8,9 +8,11 @@ import sys
 
 script_dir = os.getcwd()
 
+
 def run_cmd(cmd, capture_output=False, env=None):
     # Run shell commands
     return subprocess.run(cmd, shell=True, capture_output=capture_output, env=env)
+
 
 def check_env():
     # If we have access to conda, we are probably in an environment
@@ -23,6 +25,7 @@ def check_env():
     if os.environ["CONDA_DEFAULT_ENV"] == "base":
         print("Create an environment for this project and activate it. Exiting...")
         sys.exit()
+
 
 def install_dependencies():
     # Finds the path to your dependencies
@@ -120,6 +123,7 @@ def install_dependencies():
             if result.returncode == 1:
                 print("Wheel installation failed.")
 
+
 def update_dependencies():
     os.chdir("text-generation-webui")
     run_cmd("git pull")
@@ -132,27 +136,37 @@ def update_dependencies():
         if os.path.exists(extension_req_path):
             run_cmd("python -m pip install -r " + extension_req_path + " --upgrade")
 
+
 def download_model():
     os.chdir("text-generation-webui")
     run_cmd("python download-model.py")
+
 
 def run_model():
     os.chdir("text-generation-webui")
     run_cmd("python server.py --auto-devices --chat --model-menu")
 
+
 if __name__ == "__main__":
     # Verifies we are in a conda environment
     check_env()
-    
-    # If webui has already been installed, skip and run
-    if not os.path.exists("text-generation-webui/"):
-        install_dependencies()
-        os.chdir(script_dir)
-    
-    # Check if a model has been downloaded yet
-    if len(glob.glob("text-generation-webui/models/*/")) == 0:
-        download_model()
-        os.chdir(script_dir)
 
-    # Run the model with webui
-    run_model()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--update', action='store_true', help='Update the web UI.')
+    args = parser.parse_args()
+
+    if args.update:
+        update_dependencies()
+    else:
+        # If webui has already been installed, skip and run
+        if not os.path.exists("text-generation-webui/"):
+            install_dependencies()
+            os.chdir(script_dir)
+
+        # Check if a model has been downloaded yet
+        if len(glob.glob("text-generation-webui/models/*/")) == 0:
+            download_model()
+            os.chdir(script_dir)
+
+        # Run the model with webui
+        run_model()
