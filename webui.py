@@ -98,7 +98,7 @@ def install_dependencies():
             gxx_output = run_cmd("g++ --version", capture_output=True)
             if gxx_output.returncode != 0 or b"g++ (GCC) 12" in gxx_output.stdout:
                 # Install the correct version of g++
-                run_cmd("conda install -y gxx_linux-64=11.2.0")
+                run_cmd("conda install -y -k gxx_linux-64=11.2.0")
                 
                 # Activate the conda environment to compile GPTQ-for-LLaMa
                 conda_env_path = os.path.join(script_dir, "installer_files", "env")
@@ -138,7 +138,7 @@ def download_model():
 
 def run_model():
     os.chdir("text-generation-webui")
-    run_cmd("python server.py --auto-devices --chat")
+    run_cmd("python server.py --auto-devices --chat --model-menu")
 
 if __name__ == "__main__":
     # Verifies we are in a conda environment
