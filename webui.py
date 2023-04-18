@@ -106,29 +106,26 @@ def update_dependencies():
     run_cmd("git pull")
     run_cmd("python -m pip install -r requirements.txt")
     
-    # If the path does not exist, then try to install
-    quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
-    if not glob.glob(quant_cuda_path_regex):
-        install_flag = True
-        
-        # On some Linux distributions, g++ may not exist or be the wrong version to compile GPTQ-for-LLaMa
-        if sys.platform.startswith("linux"):
-            gxx_output = run_cmd("g++ --version", capture_output=True)
-            if gxx_output.returncode != 0 or b"g++ (GCC) 12" in gxx_output.stdout:
-                # Install the correct version of g++
-                run_cmd("conda install -y -k gxx_linux-64=11.2.0")
-                
-                # Activate the conda environment to compile GPTQ-for-LLaMa
-                conda_env_path = os.path.join(script_dir, "installer_files", "env")
-                conda_sh_path = os.path.join(script_dir, "installer_files", "conda", "etc", "profile.d", "conda.sh")
-                run_cmd(". " + conda_sh_path + " && conda activate " + conda_env_path + " && python setup_cuda.py install")
-                install_flag = False
-    
-        if install_flag:
-            run_cmd("python setup_cuda.py install")
+    # On some Linux distributions, g++ may not exist or be the wrong version to compile GPTQ-for-LLaMa
+    install_flag = True
+    if sys.platform.startswith("linux"):
+        gxx_output = run_cmd("g++ --version", capture_output=True)
+        if gxx_output.returncode != 0 or b"g++ (GCC) 12" in gxx_output.stdout:
+            # Install the correct version of g++
+            run_cmd("conda install -y -k gxx_linux-64=11.2.0")
+            
+            # Activate the conda environment to compile GPTQ-for-LLaMa
+            conda_env_path = os.path.join(script_dir, "installer_files", "env")
+            conda_sh_path = os.path.join(script_dir, "installer_files", "conda", "etc", "profile.d", "conda.sh")
+            run_cmd(". " + conda_sh_path + " && conda activate " + conda_env_path + " && python setup_cuda.py install")
             install_flag = False
+
+    if install_flag:
+        run_cmd("python setup_cuda.py install")
+        install_flag = False
     
-    # If the path still does not exist, then the install failed
+    # If the path does not exist, then the install failed
+    quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
     if not glob.glob(quant_cuda_path_regex):
         print("CUDA kernel compilation failed.")
         # Attempt installation via alternative, Windows-specific method
