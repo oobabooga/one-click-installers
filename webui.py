@@ -28,18 +28,6 @@ def check_env():
 
 
 def install_dependencies():
-    # Finds the path to your dependencies
-    site_packages_path = None
-    for sitedir in site.getsitepackages():
-        if "site-packages" in sitedir:
-            site_packages_path = sitedir
-            break
-
-    # This path is critical to applying fixes to some dependencies
-    if site_packages_path is None:
-        print("Could not find the path to your Python packages. Exiting...")
-        sys.exit()
-
     # Select your GPU or, choose to run in CPU mode
     print("What is your GPU")
     print()
@@ -68,13 +56,39 @@ def install_dependencies():
         # Fix a bitsandbytes compatibility issue with Windows
         run_cmd("python -m pip install https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl")
     
-    # Install the remaining webui dependencies
+    # Install the webui dependencies
     update_dependencies()
 
-    # The following dependencies are for CUDA. Apple M Series and CPU choices do not apply.
-    if gpuchoice == "d" or gpuchoice == "c":
+
+def update_dependencies():
+    os.chdir("text-generation-webui")
+    run_cmd("git pull")
+
+    # Installs/Updates dependencies from all requirements.txt
+    run_cmd("python -m pip install -r requirements.txt --upgrade")
+    extensions = next(os.walk("extensions"))[1]
+    for extension in extensions:
+        extension_req_path = os.path.join("extensions", extension, "requirements.txt")
+        if os.path.exists(extension_req_path):
+            run_cmd("python -m pip install -r " + extension_req_path + " --upgrade")
+
+    # The following dependencies are for CUDA, not CPU
+    # Check if the package cpuonly exists to determine if torch uses CUDA or not
+    cpuonly_exist = not run_cmd("conda list cpuonly | grep cpuonly", capture_output=True).returncode
+    if cpuonly_exist:
         return
-    
+
+    # Finds the path to your dependencies
+    for sitedir in site.getsitepackages():
+        if "site-packages" in sitedir:
+            site_packages_path = sitedir
+            break
+
+    # This path is critical to installing the following dependencies
+    if site_packages_path is None:
+        print("Could not find the path to your Python packages. Exiting...")
+        sys.exit()
+
     # Fix a bitsandbytes compatibility issue with Linux
     if sys.platform.startswith("linux"):
         shutil.copy(os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cuda117.so"), os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cpu.so"))
@@ -89,6 +103,7 @@ def install_dependencies():
     
     # Install GPTQ-for-LLaMa dependencies
     os.chdir("GPTQ-for-LLaMa")
+    run_cmd("git pull")
     run_cmd("python -m pip install -r requirements.txt")
     
     # If the path does not exist, then try to install
@@ -122,19 +137,6 @@ def install_dependencies():
             result = run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl")
             if result.returncode == 1:
                 print("Wheel installation failed.")
-
-
-def update_dependencies():
-    os.chdir("text-generation-webui")
-    run_cmd("git pull")
-
-    # Installs/Updates dependencies from all requirements.txt
-    run_cmd("python -m pip install -r requirements.txt --upgrade")
-    extensions = next(os.walk("extensions"))[1]
-    for extension in extensions:
-        extension_req_path = os.path.join("extensions", extension, "requirements.txt")
-        if os.path.exists(extension_req_path):
-            run_cmd("python -m pip install -r " + extension_req_path + " --upgrade")
 
 
 def download_model():
