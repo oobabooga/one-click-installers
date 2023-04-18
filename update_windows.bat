@@ -7,7 +7,6 @@ echo "%CD%"| findstr /C:" " >nul && echo This script relies on Miniconda which c
 set PATH=%PATH%;%SystemRoot%\system32
 
 @rem config
-set INSTALL_DIR=%cd%\installer_files
 set CONDA_ROOT_PREFIX=%cd%\installer_files\conda
 set INSTALL_ENV_DIR=%cd%\installer_files\env
 
