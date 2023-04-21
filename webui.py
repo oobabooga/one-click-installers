@@ -16,8 +16,8 @@ def run_cmd(cmd, capture_output=False, env=None):
 
 def check_env():
     # If we have access to conda, we are probably in an environment
-    conda_not_exist = run_cmd("conda", capture_output=True).returncode
-    if conda_not_exist:
+    conda_exist = run_cmd("conda", capture_output=True).returncode == 0
+    if not conda_exist:
         print("Conda is not installed. Exiting...")
         sys.exit()
     
@@ -74,7 +74,7 @@ def update_dependencies():
 
     # The following dependencies are for CUDA, not CPU
     # Check if the package cpuonly exists to determine if torch uses CUDA or not
-    cpuonly_exist = not run_cmd("conda list cpuonly | grep cpuonly", capture_output=True).returncode
+    cpuonly_exist = run_cmd("conda list cpuonly | grep cpuonly", capture_output=True).returncode == 0
     if cpuonly_exist:
         return
 
@@ -132,7 +132,7 @@ def update_dependencies():
         if sys.platform.startswith("win"):
             print("Attempting installation with wheel.")
             result = run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl")
-            if result.returncode == 1:
+            if result.returncode != 0:
                 print("Wheel installation failed.")
 
 
