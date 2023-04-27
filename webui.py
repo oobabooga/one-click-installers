@@ -9,14 +9,12 @@ import sys
 script_dir = os.getcwd()
 
 
-def run_cmd(cmd, capture_output=False, env=None):
+def run_cmd(cmd, assert_success=False, capture_output=False, env=None):
     # Run shell commands
-    return subprocess.run(cmd, shell=True, capture_output=capture_output, env=env)
-
-
-def run_cmd_assert_success(cmd, capture_output=False, env=None):
-    result = run_cmd(cmd, capture_output=capture_output, env=env)
-    if result.returncode != 0:
+    result = subprocess.run(cmd, shell=True, capture_output=capture_output, env=env)
+    
+    # Assert the command ran successfully
+    if assert_success and result.returncode != 0:
         print("Command '" + cmd + "' failed with exit status code '" + str(result.returncode) + "'. Exiting...")
         sys.exit()
     return result
@@ -48,21 +46,21 @@ def install_dependencies():
 
     # Install the version of PyTorch needed
     if gpuchoice == "a":
-        run_cmd_assert_success("conda install -y -k pytorch[version=2,build=py3.10_cuda11.7*] torchvision torchaudio pytorch-cuda=11.7 cuda-toolkit ninja git -c pytorch -c nvidia/label/cuda-11.7.0 -c nvidia")
+        run_cmd("conda install -y -k pytorch[version=2,build=py3.10_cuda11.7*] torchvision torchaudio pytorch-cuda=11.7 cuda-toolkit ninja git -c pytorch -c nvidia/label/cuda-11.7.0 -c nvidia", assert_success=True)
     elif gpuchoice == "b":
         print("AMD GPUs are not supported. Exiting...")
         sys.exit()
     elif gpuchoice == "c" or gpuchoice == "d":
-        run_cmd_assert_success("conda install -y -k pytorch torchvision torchaudio cpuonly git -c pytorch")
+        run_cmd("conda install -y -k pytorch torchvision torchaudio cpuonly git -c pytorch", assert_success=True)
     else:
         print("Invalid choice. Exiting...")
         sys.exit()
 
     # Clone webui to our computer
-    run_cmd_assert_success("git clone https://github.com/oobabooga/text-generation-webui.git")
+    run_cmd("git clone https://github.com/oobabooga/text-generation-webui.git", assert_success=True)
     if sys.platform.startswith("win"):
         # Fix a bitsandbytes compatibility issue with Windows
-        run_cmd_assert_success("python -m pip install https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl")
+        run_cmd("python -m pip install https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl", assert_success=True)
     
     # Install the webui dependencies
     update_dependencies()
@@ -70,15 +68,15 @@ def install_dependencies():
 
 def update_dependencies():
     os.chdir("text-generation-webui")
-    run_cmd_assert_success("git pull")
+    run_cmd("git pull", assert_success=True)
 
     # Installs/Updates dependencies from all requirements.txt
-    run_cmd_assert_success("python -m pip install -r requirements.txt --upgrade")
+    run_cmd("python -m pip install -r requirements.txt --upgrade", assert_success=True)
     extensions = next(os.walk("extensions"))[1]
     for extension in extensions:
         extension_req_path = os.path.join("extensions", extension, "requirements.txt")
         if os.path.exists(extension_req_path):
-            run_cmd_assert_success("python -m pip install -r " + extension_req_path + " --upgrade")
+            run_cmd("python -m pip install -r " + extension_req_path + " --upgrade", assert_success=True)
 
     # The following dependencies are for CUDA, not CPU
     # Check if the package cpuonly exists to determine if torch uses CUDA or not
@@ -107,12 +105,12 @@ def update_dependencies():
     # Install GPTQ-for-LLaMa which enables 4bit CUDA quantization
     os.chdir("repositories")
     if not os.path.exists("GPTQ-for-LLaMa/"):
-        run_cmd_assert_success("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda")
+        run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True)
     
     # Install GPTQ-for-LLaMa dependencies
     os.chdir("GPTQ-for-LLaMa")
-    run_cmd_assert_success("git pull")
-    run_cmd_assert_success("python -m pip install -r requirements.txt")
+    run_cmd("git pull", assert_success=True)
+    run_cmd("python -m pip install -r requirements.txt", assert_success=True)
     
     # On some Linux distributions, g++ may not exist or be the wrong version to compile GPTQ-for-LLaMa
     install_flag = True
