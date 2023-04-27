@@ -19,7 +19,7 @@ def run_cmd_assert_success(cmd, capture_output=False, env=None):
     if result.returncode != 0:
         print("Command '" + cmd + "' failed with exit status code '" + str(result.returncode) + "'. Exiting...")
         sys.exit()
-    return run_cmd
+    return result
 
 
 def check_env():
