@@ -141,9 +141,9 @@ def update_dependencies():
             if result.returncode == 0:
                 print("Wheel installation success!")
             else:
-                print("ERROR: GPTQ wheel installation failed. You will not be able to run models in 4bit mode.")
+                print("ERROR: GPTQ wheel installation failed. You will not be able to use GPTQ-based models.")
         else:
-            print("You will not be able to run models in 4bit mode.")
+            print("You will not be able to use GPTQ-based models.")
         print("Continuing with install..")
 
 
