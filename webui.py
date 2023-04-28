@@ -14,7 +14,8 @@ def run_cmd(cmd, assert_success=False, environment=False, capture_output=False, 
     if environment:
         conda_env_path = os.path.join(script_dir, "installer_files", "env")
         if sys.platform.startswith("win"):
-            cmd = "activate \"" + conda_env_path + "\" >nul && " + cmd
+            conda_bat_path = os.path.join(script_dir, "installer_files", "conda", "condabin", "conda.bat")
+            cmd = "\"" + conda_bat_path + "\" activate \"" + conda_env_path + "\" >nul && " + cmd
         else:
             conda_sh_path = os.path.join(script_dir, "installer_files", "conda", "etc", "profile.d", "conda.sh")
             cmd = ". \"" + conda_sh_path + "\" && conda activate \"" + conda_env_path + "\" && " + cmd
