@@ -129,7 +129,9 @@ def update_dependencies():
             # Install the correct version of g++
             run_cmd("conda install -y -k gxx_linux-64=11.2.0", environment=True)
 
-    run_cmd("python setup_cuda.py install", environment=True)
+    # Compile and install GPTQ-for-LLaMa
+    os.rename("setup_cuda.py", "setup.py")
+    run_cmd("python -m pip install .", environment=True)
     
     # If the path does not exist, then the install failed
     quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
