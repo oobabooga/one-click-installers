@@ -133,6 +133,9 @@ def update_dependencies():
     os.rename("setup_cuda.py", "setup.py")
     run_cmd("python -m pip install .", environment=True)
     
+    # Wheel installation can fail while in the build directory of a package with the same name
+    os.chdir("..")
+    
     # If the path does not exist, then the install failed
     quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
     if not glob.glob(quant_cuda_path_regex):
