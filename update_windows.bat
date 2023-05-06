@@ -18,7 +18,7 @@ set INSTALL_ENV_DIR=%cd%\installer_files\env
 call "%CONDA_ROOT_PREFIX%\condabin\conda.bat" activate "%INSTALL_ENV_DIR%" || ( echo. && echo Miniconda hook not found. && goto end )
 
 @rem update installer env
-call python webui.py --update
+python webui.py --update
 
 echo.
 echo Done!
