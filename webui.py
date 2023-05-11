@@ -8,6 +8,10 @@ import sys
 
 script_dir = os.getcwd()
 
+# Use this to set your command-line flags. For the full list, see:
+# https://github.com/oobabooga/text-generation-webui/#starting-the-web-ui
+CMD_FLAGS = '--chat --model-menu'
+
 
 def run_cmd(cmd, assert_success=False, environment=False, capture_output=False, env=None):
     # Use the conda environment
@@ -84,6 +88,9 @@ def update_dependencies():
     run_cmd("python -m pip install -r requirements.txt --upgrade", assert_success=True, environment=True)
     extensions = next(os.walk("extensions"))[1]
     for extension in extensions:
+        if extension in ['superbooga']:  # No wheels available for dependencies
+            continue
+            
         extension_req_path = os.path.join("extensions", extension, "requirements.txt")
         if os.path.exists(extension_req_path):
             run_cmd("python -m pip install -r " + extension_req_path + " --upgrade", assert_success=True, environment=True)
@@ -161,7 +168,7 @@ def download_model():
 
 def run_model():
     os.chdir("text-generation-webui")
-    run_cmd("python server.py --chat --model-menu", environment=True)  # put your flags here!
+    run_cmd(f"python server.py {CMD_FLAGS}", environment=True)
 
 
 if __name__ == "__main__":
