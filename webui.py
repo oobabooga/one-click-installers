@@ -98,6 +98,12 @@ def update_dependencies():
         if os.path.exists(extension_req_path):
             run_cmd("python -m pip install -r " + extension_req_path + " --upgrade", assert_success=True, environment=True)
 
+    # Workaround for latest bitsandbytes compatibility with older gpus
+    if sys.platform.startswith("win"):
+        compute_cap = run_cmd("call __nvcc_device_query.exe", environment=True, capture_output=True).stdout
+        if int(compute_cap) < 70:
+            run_cmd("python -m pip install https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl --force-reinstall --no-deps", assert_success=True, environment=True)
+
     # The following dependencies are for CUDA, not CPU
     # Check if the package cpuonly exists to determine if torch uses CUDA or not
     cpuonly_exist = run_cmd("conda list cpuonly | grep cpuonly", environment=True, capture_output=True).returncode == 0
