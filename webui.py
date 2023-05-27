@@ -100,8 +100,8 @@ def update_dependencies():
 
     # Workaround for latest bitsandbytes compatibility with older gpus
     if sys.platform.startswith("win"):
-        compute_cap = run_cmd("call __nvcc_device_query.exe", environment=True, capture_output=True).stdout
-        if int(compute_cap) < 70:
+        compute_array = run_cmd("call __nvcc_device_query.exe", environment=True, capture_output=True).stdout.decode('utf-8').split(',')
+        if not any(int(compute) >= 70 for compute in compute_array):
             run_cmd("python -m pip install https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl --force-reinstall --no-deps", assert_success=True, environment=True)
 
     # The following dependencies are for CUDA, not CPU
