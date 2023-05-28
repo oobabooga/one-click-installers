@@ -100,9 +100,15 @@ def update_dependencies():
 
     # Workaround for latest bitsandbytes compatibility with older gpus
     if sys.platform.startswith("win"):
-        compute_array = run_cmd("call __nvcc_device_query.exe", environment=True, capture_output=True).stdout.decode('utf-8').split(',')
-        if not any(int(compute) >= 70 for compute in compute_array):
-            run_cmd("python -m pip install https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl --force-reinstall --no-deps", assert_success=True, environment=True)
+        compute_array = run_cmd("call __nvcc_device_query.exe", environment=True, capture_output=True)
+        if compute_array.returncode == 0 and not any(int(compute) >= 70 for compute in compute_array.stdout.decode('utf-8').split(',')):
+            old_bnb_win = run_cmd("python -m pip install https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl --force-reinstall --no-deps", environment=True).returncode == 0
+            print("\n\nWARNING: GPU with compute < 7.0 detected!")
+            if old_bnb_win:
+                print("Older version of bitsandbytes has been installed to maintain compatibility.")
+                print("You will be unable to use --load-in-4bit!\n\n")
+            else:
+                print("You will be unable to use --load-in-8bit or --load-in-4bit until you install bitsandbytes 0.38.1!\n\n")
 
     # The following dependencies are for CUDA, not CPU
     # Check if the package cpuonly exists to determine if torch uses CUDA or not
