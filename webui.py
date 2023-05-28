@@ -108,7 +108,7 @@ def update_dependencies():
                 print("Older version of bitsandbytes has been installed to maintain compatibility.")
                 print("You will be unable to use --load-in-4bit!\n\n")
             else:
-                print("You will be unable to use --load-in-8bit or --load-in-4bit until you install bitsandbytes 0.38.1!\n\n")
+                print("You will be unable to use --load-in-8bit until you install bitsandbytes 0.38.1!\n\n")
 
     # The following dependencies are for CUDA, not CPU
     # Check if the package cpuonly exists to determine if torch uses CUDA or not
