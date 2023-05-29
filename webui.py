@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 script_dir = os.getcwd()
+conda_env_path = os.path.join(script_dir, "installer_files", "env")
 
 # Use this to set your command-line flags. For the full list, see:
 # https://github.com/oobabooga/text-generation-webui/#starting-the-web-ui
@@ -16,7 +17,6 @@ CMD_FLAGS = '--chat --model-menu'
 def run_cmd(cmd, assert_success=False, environment=False, capture_output=False, env=None):
     # Use the conda environment
     if environment:
-        conda_env_path = os.path.join(script_dir, "installer_files", "env")
         if sys.platform.startswith("win"):
             conda_bat_path = os.path.join(script_dir, "installer_files", "conda", "condabin", "conda.bat")
             cmd = "\"" + conda_bat_path + "\" activate \"" + conda_env_path + "\" >nul && " + cmd
@@ -211,6 +211,11 @@ if __name__ == "__main__":
         if len(glob.glob("text-generation-webui/models/*/")) == 0:
             download_model()
             os.chdir(script_dir)
+
+        # Workaround for llama-cpp-python loading paths in CUDA env vars even if they do not exist
+        conda_path_bin = os.path.join(conda_env_path, "bin")
+        if not os.path.exists(conda_path_bin):
+            os.mkdir(conda_path_bin)
 
         # Run the model with webui
         run_model()
