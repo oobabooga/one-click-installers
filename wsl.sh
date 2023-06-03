@@ -75,6 +75,8 @@ source "$CONDA_ROOT_PREFIX/etc/profile.d/conda.sh" # otherwise conda complains a
 conda activate "$INSTALL_ENV_DIR"
 
 # setup installer env   update env if called with 'wsl.sh update'
-if [ "$1" == "update" ]; then python webui.py --update
-else python webui.py
-fi
+case "$1" in
+("update") python webui.py --update;;
+("cmd") exec bash;;
+(*) python webui.py;;
+esac

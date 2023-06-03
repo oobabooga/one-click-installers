@@ -60,6 +60,8 @@ to be used by the web UI.
 To run an interactive shell in the miniconda environment, run the "cmd"
 script. This is useful for installing additional requirements manually.
 
+You can also run "wsl.sh cmd" in WSL.
+
 # Changing the default install location
 
 To change this, you will need to edit the scripts as follows:
