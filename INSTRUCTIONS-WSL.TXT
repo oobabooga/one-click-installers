@@ -41,6 +41,8 @@ the same "start" script. Ensure that webui.py and wsl.sh are next to it!
 Run the "update" script. This will only install the updates, so it should
 be much faster than the initial installation.
 
+You can also run "wsl.sh update" in WSL.
+
 # Adding flags like --chat, --notebook, etc
 
 Edit the "webui.py" script using a text editor and add the desired flags
