@@ -27,7 +27,7 @@ if [[ "$INSTALL_DIR" =~ " " ]]; then echo This script relies on Miniconda which 
 
 # create install dir if missing and copy webui.py to install dir to maintain functionality without edit
 if [ ! -d "$INSTALL_DIR" ]; then mkdir -p "$INSTALL_DIR" || exit; fi
-cp "./webui.py" "$INSTALL_DIR"
+cp -u "./webui.py" "$INSTALL_DIR"
 
 # figure out whether git and conda needs to be installed
 if "$CONDA_ROOT_PREFIX/bin/conda" --version &>/dev/null; then conda_exists="T"; fi
