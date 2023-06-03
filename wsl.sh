@@ -11,11 +11,12 @@ sudo apt-get update
 sudo apt-get install build-essential
 "
 read -n1 -p "Continue the installer anyway? [y,n]" EXIT_PROMPT
+# only continue if user inputs 'y' else exit
 if ! [[ $EXIT_PROMPT == "Y" || $EXIT_PROMPT == "y" ]]; then exit; fi
 fi
 
 
-# config
+# config   unlike other scripts, can't use current directory due to file IO bug in WSL, needs to be in virtual drive
 INSTALL_DIR="$HOME/text-gen-install"
 CONDA_ROOT_PREFIX="$INSTALL_DIR/installer_files/conda"
 INSTALL_ENV_DIR="$INSTALL_DIR/installer_files/env"
@@ -23,8 +24,10 @@ MINICONDA_DOWNLOAD_URL="https://repo.anaconda.com/miniconda/Miniconda3-py310_23.
 conda_exists="F"
 
 if [[ "$INSTALL_DIR" =~ " " ]]; then echo This script relies on Miniconda which can not be silently installed under a path with spaces. && exit; fi
+
+# create install dir if missing and copy webui.py to install dir to maintain functionality without edit
 if [ ! -d "$INSTALL_DIR" ]; then mkdir -p "$INSTALL_DIR" || exit; fi
-cp -u "./webui.py" "$INSTALL_DIR"
+cp "./webui.py" "$INSTALL_DIR"
 
 # figure out whether git and conda needs to be installed
 if "$CONDA_ROOT_PREFIX/bin/conda" --version &>/dev/null; then conda_exists="T"; fi
@@ -63,13 +66,15 @@ unset PYTHONPATH
 unset PYTHONHOME
 export CUDA_PATH="$INSTALL_ENV_DIR"
 export CUDA_HOME="$CUDA_PATH"
+
+# /usr/lib/wsl/lib needs to be added to LD_LIBRARY_PATH to fix years-old bug in WSL where GPU drivers aren't linked properly
 export LD_LIBRARY_PATH="$CUDA_HOME/lib:/usr/lib/wsl/lib:$LD_LIBRARY_PATH"
 
 # activate installer env
 source "$CONDA_ROOT_PREFIX/etc/profile.d/conda.sh" # otherwise conda complains about 'shell not initialized' (needed when running in a script)
 conda activate "$INSTALL_ENV_DIR"
 
-# setup installer env
+# setup installer env   update env if called with 'wsl.sh update'
 if [ "$1" == "update" ]; then python webui.py --update
 else python webui.py
 fi
