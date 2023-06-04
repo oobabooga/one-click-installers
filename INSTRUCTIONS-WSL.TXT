@@ -67,8 +67,7 @@ You can also run "wsl.sh cmd" in WSL.
 # Changing the default install location
 
 To change this, you will need to edit the scripts as follows:
-wsl.sh: line ~19   INSTALL_DIR="/path/to/install/dir"
-cmd_wsl.bat: line 7   call wsl -- cd /path/to/install; cd ./dir; ...
+wsl.sh: line ~22   INSTALL_DIR="/path/to/install/dir"
 
 Keep in mind that there is a long-standing bug in WSL that significantly
 slows drive read/write speeds when using a physical drive as opposed to
