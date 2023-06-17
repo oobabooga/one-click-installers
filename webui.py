@@ -158,8 +158,10 @@ def update_dependencies():
     if not os.path.exists("repositories/"):
         os.mkdir("repositories")
 
-    # Install GPTQ-for-LLaMa which enables 4bit CUDA quantization
+    # Install exllama and GPTQ-for-LLaMa which enables 4bit CUDA quantization
     os.chdir("repositories")
+    if not os.path.exists("exllama/"):
+        run_cmd("git clone https://github.com/turboderp/exllama.git", environment=True)
     if not os.path.exists("GPTQ-for-LLaMa/"):
         run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
 
