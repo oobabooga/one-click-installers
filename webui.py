@@ -145,8 +145,8 @@ def update_dependencies():
     torver_cmd = run_cmd("python -m pip show torch", assert_success=True, environment=True, capture_output=True)
     torver = [v.split()[1] for v in torver_cmd.stdout.decode('utf-8').splitlines() if 'Version:' in v][0]
     
-    # Check for '+cu' in version string to determine if torch uses CUDA or not
-    if '+cu' not in torver:
+    # Check for '+cu' in version string to determine if torch uses CUDA or not   check for pytorch-cuda as well for backwards compatibility
+    if '+cu' not in torver and run_cmd("conda list -f pytorch-cuda | grep pytorch-cuda", environment=True, capture_output=True).returncode == 1:
         return
 
     # Finds the path to your dependencies
