@@ -104,9 +104,6 @@ def install_dependencies():
 
     # Clone webui to our computer
     run_cmd("git clone https://github.com/oobabooga/text-generation-webui.git", assert_success=True, environment=True)
-    # if sys.platform.startswith("win"):
-    #     # Fix a bitsandbytes compatibility issue with Windows
-    #     run_cmd("python -m pip install https://github.com/jllllll/bitsandbytes-windows-webui/raw/main/bitsandbytes-0.38.1-py3-none-any.whl", assert_success=True, environment=True)
 
     # Install the webui dependencies
     update_dependencies()
@@ -164,8 +161,8 @@ def update_dependencies():
         sys.exit()
 
     # Fix a bitsandbytes compatibility issue with Linux
-    if sys.platform.startswith("linux"):
-        shutil.copy(os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cuda117.so"), os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cpu.so"))
+    # if sys.platform.startswith("linux"):
+    #     shutil.copy(os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cuda117.so"), os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cpu.so"))
 
     if not os.path.exists("repositories/"):
         os.mkdir("repositories")
@@ -179,6 +176,10 @@ def update_dependencies():
         os.chdir("exllama")
         run_cmd("git pull", environment=True)
         os.chdir("..")
+    
+    # Fix build issue with exllama in Linux/WSL
+    if sys.platform.startswith("linux") and not os.path.exists(f"{conda_env_path}/lib64"):
+        run_cmd(f'ln -s "{conda_env_path}/lib" "{conda_env_path}/lib64"', environment=True)
     
     # Install GPTQ-for-LLaMa which enables 4bit CUDA quantization
     if not os.path.exists("GPTQ-for-LLaMa/"):
