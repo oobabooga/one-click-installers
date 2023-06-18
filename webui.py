@@ -92,12 +92,12 @@ def install_dependencies():
 
     # Install the version of PyTorch needed
     if gpuchoice == "a":
-        run_cmd("conda install -y -k pytorch[version=2,build=py3.10_cuda11.7*] torchvision torchaudio pytorch-cuda=11.7 cuda-toolkit ninja git -c pytorch -c nvidia/label/cuda-11.7.0 -c nvidia", assert_success=True, environment=True)
+        run_cmd('conda install -y -k cuda-toolkit ninja git -c nvidia/label/cuda-11.7.0 -c nvidia && python -m pip install torch==2.0.1+cu117 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117', assert_success=True, environment=True)
     elif gpuchoice == "b":
         print("AMD GPUs are not supported. Exiting...")
         sys.exit()
     elif gpuchoice == "c" or gpuchoice == "d":
-        run_cmd("conda install -y -k pytorch torchvision torchaudio cpuonly git -c pytorch", assert_success=True, environment=True)
+        run_cmd("conda install -y -k ninja git && python -m pip install torch torchvision torchaudio", assert_success=True, environment=True)
     else:
         print("Invalid choice. Exiting...")
         sys.exit()
@@ -144,9 +144,12 @@ def update_dependencies():
         print_big_message(message)
 
     # The following dependencies are for CUDA, not CPU
-    # Check if the package cpuonly exists to determine if torch uses CUDA or not
-    cpuonly_exist = run_cmd("conda list cpuonly | grep cpuonly", environment=True, capture_output=True).returncode == 0
-    if cpuonly_exist:
+    # Parse output of 'pip show torch' to determine torch version
+    torver_cmd = run_cmd("python -m pip show torch", assert_success=True, environment=True, capture_output=True)
+    torver = [v.split()[1] for v in torver_cmd.stdout.decode('utf-8').splitlines() if 'Version:' in v][0]
+    
+    # Check for '+cu' in version string to determine if torch uses CUDA or not
+    if '+cu' not in torver:
         return
 
     # Finds the path to your dependencies
