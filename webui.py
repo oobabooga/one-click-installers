@@ -113,6 +113,9 @@ def update_dependencies():
     os.chdir("text-generation-webui")
     run_cmd("git pull", assert_success=True, environment=True)
 
+    # Workaround for Peft not updating their package version on their repo
+    run_cmd("python -m pip uninstall peft -y", environment=True)
+
     # Installs/Updates dependencies from all requirements.txt
     run_cmd("python -m pip install -r requirements.txt --upgrade", assert_success=True, environment=True)
     extensions = next(os.walk("extensions"))[1]
