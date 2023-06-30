@@ -1,6 +1,7 @@
 import argparse
 import glob
 import os
+import platform
 import site
 import subprocess
 import sys
@@ -65,32 +66,54 @@ def check_env():
         print("Create an environment for this project and activate it. Exiting...")
         sys.exit()
 
+def get_gpu_vendor():
+    system = platform.system()
+    if system == 'Windows':
+        cmd = 'wmic path win32_VideoController get name'
+        output = subprocess.check_output(cmd, shell=True).decode('utf-8')
+        if 'NVIDIA' in output:
+            return 'a'
+        elif 'AMD' in output:
+            return 'b'
+    elif system == 'Darwin':
+        cmd = '/usr/sbin/system_profiler SPDisplaysDataType | grep Chipset'
+        output = subprocess.check_output(cmd, shell=True).decode('utf-8')
+        if 'AMD' in output:
+            return 'b'
+        elif 'Apple' in output:
+            return 'c'
+    return 'd'
 
 def install_dependencies():
+    print("Select your GPU automatically")
     # Select your GPU or, choose to run in CPU mode
-    print("What is your GPU")
-    print()
-    print("A) NVIDIA")
-    print("B) AMD")
-    print("C) Apple M Series")
-    print("D) None (I want to run in CPU mode)")
-    print()
-    gpuchoice = input("Input> ").lower()
+    # print("What is your GPU")
+    # print()
+    # print("A) NVIDIA")
+    # print("B) AMD")
+    # print("C) Apple M Series")
+    # print("D) None (I want to run in CPU mode)")
+    # print()
+    gpuchoice = get_gpu_vendor()
 
     if gpuchoice == "d":
+        print("None (You may need to run in CPU mode)")
         print_big_message("Once the installation ends, make sure to open webui.py with a text editor\nand add the --cpu flag to CMD_FLAGS.")
 
     # Install the version of PyTorch needed
     if gpuchoice == "a":
+        print("It is NVIDIA")
         run_cmd('conda install -y -k cuda ninja git -c nvidia/label/cuda-11.7.0 -c nvidia && python -m pip install torch==2.0.1+cu117 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117', assert_success=True, environment=True)
     elif gpuchoice == "b":
+        print("It is AMD")
         print("AMD GPUs are not supported. Exiting...")
         sys.exit()
-    elif gpuchoice == "c" or gpuchoice == "d":
+    else gpuchoice == "c" or gpuchoice == "d":
+        print("Apple M Series or none")
         run_cmd("conda install -y -k ninja git && python -m pip install torch torchvision torchaudio", assert_success=True, environment=True)
-    else:
-        print("Invalid choice. Exiting...")
-        sys.exit()
+    # else:
+    #     print("Invalid choice. Exiting...")
+    #     sys.exit()
 
     # Clone webui to our computer
     run_cmd("git clone https://github.com/oobabooga/text-generation-webui.git", assert_success=True, environment=True)
