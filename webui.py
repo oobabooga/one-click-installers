@@ -20,6 +20,12 @@ if "OOBABOOGA_FLAGS" in os.environ:
     print("The following flags have been taken from the environment variable 'OOBABOOGA_FLAGS':")
     print(CMD_FLAGS)
     print("To use the CMD_FLAGS Inside webui.py, unset 'OOBABOOGA_FLAGS'.\n")
+    
+
+# Remove the '# ' from the following lines if needed for your AMD GPU on Linux
+# os.environ["ROCM_PATH"] = '/opt/rocm'
+# os.environ["HSA_OVERRIDE_GFX_VERSION"] = '10.3.0'
+# os.environ["HCC_AMDGPU_TARGET"] = 'gfx1030'
 
 
 def print_big_message(message):
@@ -72,7 +78,7 @@ def install_dependencies():
     print("What is your GPU")
     print()
     print("A) NVIDIA")
-    print("B) AMD")
+    print("B) AMD (Linux only. Requires ROCm SDK 5.4.2)")
     print("C) Apple M Series")
     print("D) None (I want to run in CPU mode)")
     print()
@@ -85,8 +91,7 @@ def install_dependencies():
     if gpuchoice == "a":
         run_cmd('conda install -y -k cuda ninja git -c nvidia/label/cuda-11.7.0 -c nvidia && python -m pip install torch==2.0.1+cu117 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117', assert_success=True, environment=True)
     elif gpuchoice == "b":
-        print("AMD GPUs are not supported. Exiting...")
-        sys.exit()
+        run_cmd("conda install -y -k ninja git && python -m pip install torch==2.0.1+rocm5.4.2 torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.4.2", assert_success=True, environment=True)
     elif gpuchoice == "c":
         run_cmd("conda install -y -k ninja git && python -m pip install torch torchvision torchaudio", assert_success=True, environment=True)
     elif gpuchoice == "d":
@@ -157,20 +162,9 @@ def update_dependencies():
     torver_cmd = run_cmd("python -m pip show torch", assert_success=True, environment=True, capture_output=True)
     torver = [v.split()[1] for v in torver_cmd.stdout.decode('utf-8').splitlines() if 'Version:' in v][0]
 
-    # Check for '+cu' in version string to determine if torch uses CUDA or not   check for pytorch-cuda as well for backwards compatibility
-    if '+cu' not in torver and run_cmd("conda list -f pytorch-cuda | grep pytorch-cuda", environment=True, capture_output=True).returncode == 1:
+    # Check for '+cu' in version string to determine if torch uses CUDA or ROCm   check for pytorch-cuda as well for backwards compatibility
+    if '+cu' not in torver and '+rocm' not in torver and run_cmd("conda list -f pytorch-cuda | grep pytorch-cuda", environment=True, capture_output=True).returncode == 1:
         return
-
-    # Finds the path to your dependencies
-    for sitedir in site.getsitepackages():
-        if "site-packages" in sitedir:
-            site_packages_path = sitedir
-            break
-
-    # This path is critical to installing the following dependencies
-    if site_packages_path is None:
-        print("Could not find the path to your Python packages. Exiting...")
-        sys.exit()
 
     # Fix a bitsandbytes compatibility issue with Linux
     # if sys.platform.startswith("linux"):
@@ -188,6 +182,10 @@ def update_dependencies():
         os.chdir("exllama")
         run_cmd("git pull", environment=True)
         os.chdir("..")
+        
+    # exllama module does not support AMD GPU
+    if '+rocm' in torver:
+        run_cmd("python -m pip uninstall -y exllama", environment=True)
 
     # Fix build issue with exllama in Linux/WSL
     if sys.platform.startswith("linux") and not os.path.exists(f"{conda_env_path}/lib64"):
@@ -207,6 +205,17 @@ def update_dependencies():
         if gxx_output.returncode != 0 or int(gxx_output.stdout.strip().split(b".")[0]) > 11:
             # Install the correct version of g++
             run_cmd("conda install -y -k gxx_linux-64=11.2.0", environment=True)
+    
+    # Finds the path to your dependencies
+    for sitedir in site.getsitepackages():
+        if "site-packages" in sitedir:
+            site_packages_path = sitedir
+            break
+
+    # This path is critical to installing the following dependencies
+    if site_packages_path is None:
+        print("Could not find the path to your Python packages. Exiting...")
+        sys.exit()
 
     # Compile and install GPTQ-for-LLaMa
     if os.path.exists('setup_cuda.py'):
