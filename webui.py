@@ -90,9 +90,13 @@ def install_dependencies():
     # Install the version of PyTorch needed
     if gpuchoice == "a":
         run_cmd('conda install -y -k cuda ninja git -c nvidia/label/cuda-11.7.0 -c nvidia && python -m pip install torch==2.0.1+cu117 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117', assert_success=True, environment=True)
-    elif gpuchoice == "b":
-        run_cmd("conda install -y -k ninja git && python -m pip install torch==2.0.1+rocm5.4.2 torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.4.2", assert_success=True, environment=True)
-    elif gpuchoice == "c":
+    elif gpuchoice == "b" and not sys.platform.startswith("darwin"):
+        if sys.platform.startswith("linux"):
+            run_cmd('conda install -y -k ninja git && python -m pip install torch==2.0.1+rocm5.4.2 torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.4.2', assert_success=True, environment=True)
+        else:
+            print("AMD GPUs are only supported on Linux. Exiting...")
+            sys.exit()
+    elif gpuchoice == "c" or (gpuchoice == "b" and sys.platform.startswith("darwin")):
         run_cmd("conda install -y -k ninja git && python -m pip install torch torchvision torchaudio", assert_success=True, environment=True)
     elif gpuchoice == "d":
         if sys.platform.startswith("linux"):
@@ -230,7 +234,7 @@ def update_dependencies():
     quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
     if not glob.glob(quant_cuda_path_regex):
         # Attempt installation via alternative, Windows/Linux-specific method
-        if sys.platform.startswith("win") or sys.platform.startswith("linux"):
+        if sys.platform.startswith("win") or sys.platform.startswith("linux") and '+rocm' not in torver:
             print_big_message("WARNING: GPTQ-for-LLaMa compilation failed, but this is FINE and can be ignored!\nThe installer will proceed to install a pre-compiled wheel.")
             url = "https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl"
             if sys.platform.startswith("linux"):
@@ -243,7 +247,7 @@ def update_dependencies():
                 print("ERROR: GPTQ wheel installation failed. You will not be able to use GPTQ-based models.")
         else:
             print("ERROR: GPTQ CUDA kernel compilation failed.")
-            print("You will not be able to use GPTQ-based models.")
+            print("You will not be able to use GPTQ-based models with GPTQ-for-LLaMa.")
 
         print("Continuing with install..")
 
