@@ -197,7 +197,10 @@ def update_dependencies():
 
     # Install GPTQ-for-LLaMa which enables 4bit CUDA quantization
     if not os.path.exists("GPTQ-for-LLaMa/"):
-        run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
+        if '+rocm' in torver:
+            run_cmd("git clone https://github.com/WapaMario63/GPTQ-for-LLaMa-ROCm.git GPTQ-for-LLaMa -b rocm", assert_success=True, environment=True)
+        else:
+            run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
 
     # Install GPTQ-for-LLaMa dependencies
     os.chdir("GPTQ-for-LLaMa")
@@ -222,7 +225,10 @@ def update_dependencies():
         sys.exit()
 
     # Compile and install GPTQ-for-LLaMa
-    if os.path.exists('setup_cuda.py'):
+    if '+rocm' in torver:
+        if os.path.exists('setup_rocm.py'):
+            os.rename("setup_rocm.py", "setup.py")
+    elif os.path.exists('setup_cuda.py'):
         os.rename("setup_cuda.py", "setup.py")
 
     run_cmd("python -m pip install .", environment=True)
