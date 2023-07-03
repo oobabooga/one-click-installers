@@ -33,6 +33,5 @@ script. This is useful for installing additional requirements manually.
 
 Requires ROCm SDK 5.4.2 to be installed.
 
-Edit the "webui.py" script using a text editor and un-comment and modify the
-lines near the top of the script according to your setup. In particular, modify
-the os.environ["ROCM_PATH"] = '/opt/rocm' line to point to your ROCm installation.
+Edit the "webui.py" script using a text editor and un-comment the
+lines near the top of the script if needed for your AMD GPU.

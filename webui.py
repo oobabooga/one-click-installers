@@ -23,7 +23,6 @@ if "OOBABOOGA_FLAGS" in os.environ:
     
 
 # Remove the '# ' from the following lines if needed for your AMD GPU on Linux
-# os.environ["ROCM_PATH"] = '/opt/rocm'
 # os.environ["HSA_OVERRIDE_GFX_VERSION"] = '10.3.0'
 # os.environ["HCC_AMDGPU_TARGET"] = 'gfx1030'
 
@@ -186,14 +185,34 @@ def update_dependencies():
         os.chdir("exllama")
         run_cmd("git pull", environment=True)
         os.chdir("..")
-        
-    # exllama module does not support AMD GPU
-    if '+rocm' in torver:
-        run_cmd("python -m pip uninstall -y exllama", environment=True)
 
     # Fix build issue with exllama in Linux/WSL
     if sys.platform.startswith("linux") and not os.path.exists(f"{conda_env_path}/lib64"):
         run_cmd(f'ln -s "{conda_env_path}/lib" "{conda_env_path}/lib64"', environment=True)
+        
+    # exllama module does not support AMD GPU   Also check for ROCm version and set needed env vars
+    if '+rocm' in torver:
+        run_cmd("python -m pip uninstall -y exllama", environment=True)
+        if os.path.exists("/opt/rocm-5.4.2/bin/hipcc"):
+            hipcc = run_cmd("/opt/rocm-5.4.2/bin/hipcc --version", environment=True, capture_output=True)
+            if hipcc.returncode == 0:
+                os.environ["ROCM_PATH"] = '/opt/rocm-5.4.2'
+                os.environ["PATH"] = '/opt/rocm-5.4.2:' + os.environ["PATH"]
+            else:
+                print("Failed to check hipcc version!")
+                print(hipcc.stdout.decode('utf-8'))
+                sys.exit()
+        elif os.path.exists("/opt/rocm/bin/hipcc"):
+            hipcc = run_cmd("/opt/rocm/bin/hipcc --version", environment=True, capture_output=True)
+            if hipcc.returncode == 0 and 'HIP version: 5.4.2' in hipcc.decode('utf-8'):
+                os.environ["ROCM_PATH"] = '/opt/rocm'
+                os.environ["PATH"] = '/opt/rocm:' + os.environ["PATH"]
+            else:
+                print_big_message("ROCm 5.4.2 not found!")
+                sys.exit()
+        else:
+            print_big_message("ROCm 5.4.2 not found!")
+            sys.exit()
 
     # Install GPTQ-for-LLaMa which enables 4bit CUDA quantization
     if not os.path.exists("GPTQ-for-LLaMa/"):
