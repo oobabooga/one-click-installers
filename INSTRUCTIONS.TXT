@@ -31,7 +31,7 @@ script. This is useful for installing additional requirements manually.
 
 # Using an AMD GPU in Linux
 
-Requires ROCm SDK 5.4.2 to be installed.
+Requires ROCm SDK 5.4.2 or 5.4.3 to be installed.
 Some systems may also need: sudo apt-get install libstdc++-12-dev
 
 Edit the "webui.py" script using a text editor and un-comment and modify the
