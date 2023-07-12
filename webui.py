@@ -20,6 +20,12 @@ if "OOBABOOGA_FLAGS" in os.environ:
     print("The following flags have been taken from the environment variable 'OOBABOOGA_FLAGS':")
     print(CMD_FLAGS)
     print("To use the CMD_FLAGS Inside webui.py, unset 'OOBABOOGA_FLAGS'.\n")
+    
+
+# Remove the '# ' from the following lines as needed for your AMD GPU on Linux
+# os.environ["ROCM_PATH"] = '/opt/rocm'
+# os.environ["HSA_OVERRIDE_GFX_VERSION"] = '10.3.0'
+# os.environ["HCC_AMDGPU_TARGET"] = 'gfx1030'
 
 
 def print_big_message(message):
@@ -72,7 +78,7 @@ def install_dependencies():
     print("What is your GPU")
     print()
     print("A) NVIDIA")
-    print("B) AMD")
+    print("B) AMD (Linux only. Requires ROCm SDK 5.4.2/5.4.3)")
     print("C) Apple M Series")
     print("D) None (I want to run in CPU mode)")
     print()
@@ -84,10 +90,13 @@ def install_dependencies():
     # Install the version of PyTorch needed
     if gpuchoice == "a":
         run_cmd('conda install -y -k cuda ninja git -c nvidia/label/cuda-11.7.0 -c nvidia && python -m pip install torch==2.0.1+cu117 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117', assert_success=True, environment=True)
-    elif gpuchoice == "b":
-        print("AMD GPUs are not supported. Exiting...")
-        sys.exit()
-    elif gpuchoice == "c":
+    elif gpuchoice == "b" and not sys.platform.startswith("darwin"):
+        if sys.platform.startswith("linux"):
+            run_cmd('conda install -y -k ninja git && python -m pip install torch==2.0.1+rocm5.4.2 torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.4.2', assert_success=True, environment=True)
+        else:
+            print("AMD GPUs are only supported on Linux. Exiting...")
+            sys.exit()
+    elif gpuchoice == "c" or (gpuchoice == "b" and sys.platform.startswith("darwin")):
         run_cmd("conda install -y -k ninja git && python -m pip install torch torchvision torchaudio", assert_success=True, environment=True)
     elif gpuchoice == "d":
         if sys.platform.startswith("linux"):
@@ -157,20 +166,9 @@ def update_dependencies():
     torver_cmd = run_cmd("python -m pip show torch", assert_success=True, environment=True, capture_output=True)
     torver = [v.split()[1] for v in torver_cmd.stdout.decode('utf-8').splitlines() if 'Version:' in v][0]
 
-    # Check for '+cu' in version string to determine if torch uses CUDA or not   check for pytorch-cuda as well for backwards compatibility
-    if '+cu' not in torver and run_cmd("conda list -f pytorch-cuda | grep pytorch-cuda", environment=True, capture_output=True).returncode == 1:
+    # Check for '+cu' in version string to determine if torch uses CUDA or ROCm   check for pytorch-cuda as well for backwards compatibility
+    if '+cu' not in torver and '+rocm' not in torver and run_cmd("conda list -f pytorch-cuda | grep pytorch-cuda", environment=True, capture_output=True).returncode == 1:
         return
-
-    # Finds the path to your dependencies
-    for sitedir in site.getsitepackages():
-        if "site-packages" in sitedir:
-            site_packages_path = sitedir
-            break
-
-    # This path is critical to installing the following dependencies
-    if site_packages_path is None:
-        print("Could not find the path to your Python packages. Exiting...")
-        sys.exit()
 
     # Fix a bitsandbytes compatibility issue with Linux
     # if sys.platform.startswith("linux"):
@@ -188,6 +186,10 @@ def update_dependencies():
         os.chdir("exllama")
         run_cmd("git pull", environment=True)
         os.chdir("..")
+        
+    # exllama module does not support AMD GPU
+    if '+rocm' in torver:
+        run_cmd("python -m pip uninstall -y exllama", environment=True)
 
     # Fix build issue with exllama in Linux/WSL
     if sys.platform.startswith("linux") and not os.path.exists(f"{conda_env_path}/lib64"):
@@ -195,11 +197,23 @@ def update_dependencies():
 
     # Install GPTQ-for-LLaMa which enables 4bit CUDA quantization
     if not os.path.exists("GPTQ-for-LLaMa/"):
-        run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
+        if '+rocm' in torver:
+            run_cmd("git clone https://github.com/WapaMario63/GPTQ-for-LLaMa-ROCm.git GPTQ-for-LLaMa -b rocm", assert_success=True, environment=True)
+        else:
+            run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
+
+    # Install/Update ROCm AutoGPTQ and GPTQ-for-LLaMa for AMD GPUs
+    if '+rocm' in torver:
+        run_cmd("git clone https://github.com/WapaMario63/GPTQ-for-LLaMa-ROCm.git GPTQ-for-LLaMa -b rocm", assert_success=True, environment=True)
+        rocm_gptq = run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/blob/Linux-x64/ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall", environment=True).returncode == 0
+        # Install ROCm AutoGPTQ wheel, compile from source if failed to install
+        if run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/blob/Linux-x64/ROCm-5.4.2/auto_gptq-0.3.0.dev0%2Brocm5.4.2-cp310-cp310-linux_x86_64.whl --force-reinstall --no-deps", environment=True).returncode != 0:
+            if run_cmd("git clone https://github.com/are-we-gfx1100-yet/AutoGPTQ-rocm.git ../../AutoGPTQ-rocm && pushd ../../AutoGPTQ-rocm && cp setup_rocm.py setup.py && python -m pip install . --force-reinstall --no-deps && popd", environment=True).returncode != 0:
+                print_big_message("ERROR: AutoGPTQ kernel compilation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
 
     # Install GPTQ-for-LLaMa dependencies
     os.chdir("GPTQ-for-LLaMa")
-    run_cmd("git pull", assert_success=True, environment=True)
+    run_cmd("git pull", environment=True)
 
     # On some Linux distributions, g++ may not exist or be the wrong version to compile GPTQ-for-LLaMa
     if sys.platform.startswith("linux"):
@@ -207,34 +221,51 @@ def update_dependencies():
         if gxx_output.returncode != 0 or int(gxx_output.stdout.strip().split(b".")[0]) > 11:
             # Install the correct version of g++
             run_cmd("conda install -y -k gxx_linux-64=11.2.0", environment=True)
+    
+    # Finds the path to your dependencies
+    for sitedir in site.getsitepackages():
+        if "site-packages" in sitedir:
+            site_packages_path = sitedir
+            break
+
+    # This path is critical to installing the following dependencies
+    if site_packages_path is None:
+        print("Could not find the path to your Python packages. Exiting...")
+        sys.exit()
 
     # Compile and install GPTQ-for-LLaMa
-    if os.path.exists('setup_cuda.py'):
+    if '+rocm' in torver:
+        if os.path.exists('setup_rocm.py'):
+            os.replace("setup_rocm.py", "setup.py")
+        # Skip compile for AMD GPU if wheel is successfully installed
+        if rocm_gptq:
+            return
+    elif os.path.exists('setup_cuda.py'):
         os.rename("setup_cuda.py", "setup.py")
 
-    run_cmd("python -m pip install .", environment=True)
+    build_gptq = run_cmd("python -m pip install .", environment=True).returncode == 0
 
     # Wheel installation can fail while in the build directory of a package with the same name
     os.chdir("..")
 
-    # If the path does not exist, then the install failed
+    # If the path does not exist or if command returncode is not 0, then the install failed or was potentially installed outside env
     quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
-    if not glob.glob(quant_cuda_path_regex):
+    if not glob.glob(quant_cuda_path_regex) or not build_gptq:
         # Attempt installation via alternative, Windows/Linux-specific method
-        if sys.platform.startswith("win") or sys.platform.startswith("linux"):
+        if sys.platform.startswith("win") or sys.platform.startswith("linux") and '+rocm' not in torver:
             print_big_message("WARNING: GPTQ-for-LLaMa compilation failed, but this is FINE and can be ignored!\nThe installer will proceed to install a pre-compiled wheel.")
             url = "https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl"
             if sys.platform.startswith("linux"):
                 url = "https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl"
 
             result = run_cmd("python -m pip install " + url, environment=True)
-            if result.returncode == 0:
+            if result.returncode == 0 and glob.glob(quant_cuda_path_regex):
                 print("Wheel installation success!")
             else:
                 print("ERROR: GPTQ wheel installation failed. You will not be able to use GPTQ-based models.")
         else:
             print("ERROR: GPTQ CUDA kernel compilation failed.")
-            print("You will not be able to use GPTQ-based models.")
+            print("You will not be able to use GPTQ-based models with GPTQ-for-LLaMa.")
 
         print("Continuing with install..")
 
