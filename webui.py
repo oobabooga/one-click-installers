@@ -187,9 +187,13 @@ def update_dependencies():
         run_cmd("git pull", environment=True)
         os.chdir("..")
         
-    # exllama module does not support AMD GPU
+    # Pre-installed exllama module does not support AMD GPU
     if '+rocm' in torver:
         run_cmd("python -m pip uninstall -y exllama", environment=True)
+        # Get download URL for latest exllama ROCm wheel
+        exllama_rocm = run_cmd('curl -s https://api.github.com/repos/jllllll/exllama/releases/latest | grep browser_download_url | grep rocm5.4.2-cp310-cp310-linux_x86_64.whl | cut -d : -f 2,3 | tr -d \'"\'', environment=True, capture_output=True).stdout.decode('utf-8')
+        if 'rocm5.4.2-cp310-cp310-linux_x86_64.whl' in exllama_rocm:
+            run_cmd("python -m pip install " + exllama_rocm, environment=True)
 
     # Fix build issue with exllama in Linux/WSL
     if sys.platform.startswith("linux") and not os.path.exists(f"{conda_env_path}/lib64"):
@@ -203,12 +207,12 @@ def update_dependencies():
             run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
 
     # Install/Update ROCm AutoGPTQ and GPTQ-for-LLaMa for AMD GPUs
-    if '+rocm' in torver:
+    if '+rocm' in torver and sys.platform.startswith("linux"):
         run_cmd("git clone https://github.com/WapaMario63/GPTQ-for-LLaMa-ROCm.git GPTQ-for-LLaMa -b rocm", assert_success=True, environment=True)
-        rocm_gptq = run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/blob/Linux-x64/ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall", environment=True).returncode == 0
+        rocm_gptq = run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall", environment=True).returncode == 0
         # Install ROCm AutoGPTQ wheel, compile from source if failed to install
-        if run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/blob/Linux-x64/ROCm-5.4.2/auto_gptq-0.3.0.dev0%2Brocm5.4.2-cp310-cp310-linux_x86_64.whl --force-reinstall --no-deps", environment=True).returncode != 0:
-            if run_cmd("git clone https://github.com/are-we-gfx1100-yet/AutoGPTQ-rocm.git ../../AutoGPTQ-rocm && pushd ../../AutoGPTQ-rocm && cp setup_rocm.py setup.py && python -m pip install . --force-reinstall --no-deps && popd", environment=True).returncode != 0:
+        if run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/auto_gptq-0.3.0.dev0%2Brocm5.4.2-cp310-cp310-linux_x86_64.whl --force-reinstall --no-deps", environment=True).returncode != 0:
+            if run_cmd("[ -d ./AutoGPTQ-rocm ] && rm -rfd ./AutoGPTQ-rocm; git clone https://github.com/are-we-gfx1100-yet/AutoGPTQ-rocm.git ./AutoGPTQ-rocm && cp ./AutoGPTQ-rocm/setup_rocm.py ./AutoGPTQ-rocm/setup.py && python -m pip install ./AutoGPTQ-rocm --force-reinstall --no-deps --dry-run", environment=True).returncode != 0:
                 print_big_message("ERROR: AutoGPTQ kernel compilation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
 
     # Install GPTQ-for-LLaMa dependencies
