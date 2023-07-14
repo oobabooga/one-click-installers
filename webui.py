@@ -212,7 +212,7 @@ def update_dependencies():
         rocm_gptq = run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall", environment=True).returncode == 0
         # Install ROCm AutoGPTQ wheel, compile from source if failed to install
         if run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/auto_gptq-0.3.0.dev0%2Brocm5.4.2-cp310-cp310-linux_x86_64.whl --force-reinstall --no-deps", environment=True).returncode != 0:
-            if run_cmd("[ -d ./AutoGPTQ-rocm ] && rm -rfd ./AutoGPTQ-rocm; git clone https://github.com/are-we-gfx1100-yet/AutoGPTQ-rocm.git ./AutoGPTQ-rocm && cp ./AutoGPTQ-rocm/setup_rocm.py ./AutoGPTQ-rocm/setup.py && python -m pip install ./AutoGPTQ-rocm --force-reinstall --no-deps --dry-run", environment=True).returncode != 0:
+            if run_cmd("[ -d ./AutoGPTQ-rocm ] && rm -rfd ./AutoGPTQ-rocm; git clone https://github.com/are-we-gfx1100-yet/AutoGPTQ-rocm.git ./AutoGPTQ-rocm && cp ./AutoGPTQ-rocm/setup_rocm.py ./AutoGPTQ-rocm/setup.py && python -m pip install ./AutoGPTQ-rocm --force-reinstall --no-deps", environment=True).returncode != 0:
                 print_big_message("ERROR: AutoGPTQ kernel compilation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
 
     # Install GPTQ-for-LLaMa dependencies
