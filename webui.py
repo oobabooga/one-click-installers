@@ -79,7 +79,7 @@ def install_dependencies():
     print("What is your GPU")
     print()
     print("A) NVIDIA")
-    print("B) AMD (Linux only. Requires ROCm SDK 5.4.2/5.4.3)")
+    print("B) AMD (Linux/MacOS only. Requires ROCm SDK 5.4.2/5.4.3 on Linux)")
     print("C) Apple M Series")
     print("D) None (I want to run in CPU mode)")
     print()
@@ -200,7 +200,7 @@ def update_dependencies():
         # Install oobabooga fork if min compute met or if failed to check
         if '+rocm' in torver:
             run_cmd("git clone https://github.com/WapaMario63/GPTQ-for-LLaMa-ROCm.git GPTQ-for-LLaMa -b rocm", assert_success=True, environment=True)
-        elif and gptq_min_compute_check or compute_array.returncode != 0:
+        elif gptq_min_compute_check or compute_array.returncode != 0:
             run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
         else:
             run_cmd("git clone https://github.com/qwopqwop200/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
