@@ -97,9 +97,9 @@ def install_dependencies():
         else:
             print("AMD GPUs are only supported on Linux. Exiting...")
             sys.exit()
-    elif gpuchoice == "c" or (gpuchoice == "b" and sys.platform.startswith("darwin")):
+    elif (gpuchoice == "c" or gpuchoice == "b") and sys.platform.startswith("darwin"):
         run_cmd("conda install -y -k ninja git && python -m pip install torch torchvision torchaudio", assert_success=True, environment=True)
-    elif gpuchoice == "d":
+    elif gpuchoice == "d" or gpuchoice == "c":
         if sys.platform.startswith("linux"):
             run_cmd("conda install -y -k ninja git && python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu", assert_success=True, environment=True)
         else:
@@ -212,14 +212,12 @@ def update_dependencies():
             # Install the correct version of g++
             run_cmd("conda install -y -k gxx_linux-64=11.2.0", environment=True)
 
-    # Install/Update ROCm AutoGPTQ and GPTQ-for-LLaMa for AMD GPUs
-    if '+rocm' in torver and sys.platform.startswith("linux"):
-        run_cmd("git clone https://github.com/WapaMario63/GPTQ-for-LLaMa-ROCm.git GPTQ-for-LLaMa -b rocm", assert_success=True, environment=True)
-        rocm_gptq = run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl --force-reinstall", environment=True).returncode == 0
-        # Install ROCm AutoGPTQ wheel, compile from source if failed to install
-        if run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/auto_gptq-0.3.0.dev0%2Brocm5.4.2-cp310-cp310-linux_x86_64.whl --force-reinstall --no-deps", environment=True).returncode != 0:
-            if run_cmd("[ -d ./AutoGPTQ-rocm ] && rm -rfd ./AutoGPTQ-rocm; git clone https://github.com/are-we-gfx1100-yet/AutoGPTQ-rocm.git ./AutoGPTQ-rocm && cp ./AutoGPTQ-rocm/setup_rocm.py ./AutoGPTQ-rocm/setup.py && python -m pip install ./AutoGPTQ-rocm --force-reinstall --no-deps", environment=True).returncode != 0:
-                print_big_message("ERROR: AutoGPTQ kernel compilation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
+    # Install/Update ROCm AutoGPTQ for AMD GPUs
+    if '+rocm' in torver:
+        if run_cmd("[ -d ./AutoGPTQ-rocm ] && rm -rfd ./AutoGPTQ-rocm; git clone https://github.com/are-we-gfx1100-yet/AutoGPTQ-rocm.git ./AutoGPTQ-rocm && cp ./AutoGPTQ-rocm/setup_rocm.py ./AutoGPTQ-rocm/setup.py && python -m pip install ./AutoGPTQ-rocm --force-reinstall --no-deps", environment=True).returncode != 0:
+            print_big_message("WARNING: AutoGPTQ kernel compilation failed!\n       The installer will proceed to install a pre-compiled wheel.")
+            if run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/auto_gptq-0.3.0.dev0%2Brocm5.4.2-cp310-cp310-linux_x86_64.whl --force-reinstall --no-deps", environment=True).returncode != 0:
+                print_big_message("ERROR: AutoGPTQ wheel installation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
 
     # Install GPTQ-for-LLaMa dependencies
     os.chdir("GPTQ-for-LLaMa")
@@ -256,9 +254,12 @@ def update_dependencies():
     quant_cuda_path = glob.glob(quant_cuda_path_regex)
     if not build_gptq:
         # Attempt installation via alternative, Windows/Linux-specific method
-        if sys.platform.startswith("win") or sys.platform.startswith("linux") and not quant_cuda_path and '+rocm' not in torver:
+        if sys.platform.startswith("win") or sys.platform.startswith("linux") and not quant_cuda_path:
             print_big_message("WARNING: GPTQ-for-LLaMa compilation failed, but this is FINE and can be ignored!\nThe installer will proceed to install a pre-compiled wheel.")
-            wheel = f"{'' if gptq_min_compute_check or compute_array.returncode != 0 else '832e220d6dbf11bec5eaa8b221a52c1c854d2a25/'}quant_cuda-0.0.0-cp310-cp310-{'linux_x86_64' if sys.platform.startswith('linux') else 'win_amd64'}.whl"
+            if '+rocm' in torver:
+                wheel = 'ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl'
+            else:
+                wheel = f"{'' if gptq_min_compute_check or compute_array.returncode != 0 else '832e220d6dbf11bec5eaa8b221a52c1c854d2a25/'}quant_cuda-0.0.0-cp310-cp310-{'linux_x86_64' if sys.platform.startswith('linux') else 'win_amd64'}.whl"
             url = f"https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/{'Linux-x64' if sys.platform.startswith('linux') else 'main'}/" + wheel
 
             result = run_cmd("python -m pip install " + url, environment=True)
