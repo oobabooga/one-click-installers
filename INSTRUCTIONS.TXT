@@ -37,3 +37,14 @@ Some systems may also need: sudo apt-get install libstdc++-12-dev
 Edit the "webui.py" script using a text editor and un-comment and modify the
 lines near the top of the script according to your setup. In particular, modify
 the os.environ["ROCM_PATH"] = '/opt/rocm' line to point to your ROCm installation.
+
+# Downloading a Large Language Model
+
+On sites where you have access to LLMs the format is typically:
+username forwardslash designated name for language model.
+
+Example: tiiuae/falcon-7b 
+To download the model:
+Go the model tab, once the server is running
+Under Download custom model or LoRA paste or type the info
+Click Download
