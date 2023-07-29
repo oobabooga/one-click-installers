@@ -75,15 +75,19 @@ def check_env():
 
 
 def install_dependencies():
-    # Select your GPU or, choose to run in CPU mode
-    print("What is your GPU")
-    print()
-    print("A) NVIDIA")
-    print("B) AMD (Linux/MacOS only. Requires ROCm SDK 5.4.2/5.4.3 on Linux)")
-    print("C) Apple M Series")
-    print("D) None (I want to run in CPU mode)")
-    print()
-    gpuchoice = input("Input> ").lower()
+    if "OOBABOOGA_INSTALL_GPU_CHOICE" in os.environ:
+        print("Continue installing using GPU choice from ENV var OOBABOOGA_INSTALL_GPU_CHOICE...")
+        gpuchoice = os.environ["OOBABOOGA_INSTALL_GPU_CHOICE"].lower()
+    else:
+        # Select your GPU or, choose to run in CPU mode
+        print("What is your GPU")
+        print()
+        print("A) NVIDIA")
+        print("B) AMD (Linux/MacOS only. Requires ROCm SDK 5.4.2/5.4.3 on Linux)")
+        print("C) Apple M Series")
+        print("D) None (I want to run in CPU mode)")
+        print()
+        gpuchoice = input("Input> ").lower()
 
     if gpuchoice == "d":
         print_big_message("Once the installation ends, make sure to open webui.py with a text editor\nand add the --cpu flag to CMD_FLAGS.")
@@ -298,6 +302,11 @@ if __name__ == "__main__":
         if not os.path.exists("text-generation-webui/"):
             install_dependencies()
             os.chdir(script_dir)
+
+        if "OOBABOOGA_LAUNCH_AFTER_INSTALL" in os.environ:
+            if os.environ["OOBABOOGA_LAUNCH_AFTER_INSTALL"].lower() in ("no", "n", "false", "0", "f", "off"):
+                print("Install finished successfully and exiting due to OOBABOOGA_LAUNCH_AFTER_INSTALL.")
+                sys.exit()
 
         # Check if a model has been downloaded yet
         if len([item for item in glob.glob('text-generation-webui/models/*') if not item.endswith(('.txt', '.yaml'))]) == 0:
