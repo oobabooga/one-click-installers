@@ -1,7 +1,7 @@
 import argparse
 import glob
-import re
 import os
+import re
 import site
 import subprocess
 import sys
@@ -187,7 +187,7 @@ def update_dependencies(initial_installation=False):
         os.chdir("exllama")
         run_cmd("git pull", environment=True)
         os.chdir("..")
-        
+
     # Pre-installed exllama module does not support AMD GPU
     if '+rocm' in torver:
         run_cmd("python -m pip uninstall -y exllama", environment=True)
@@ -231,7 +231,7 @@ def update_dependencies(initial_installation=False):
     # Install GPTQ-for-LLaMa dependencies
     os.chdir("GPTQ-for-LLaMa")
     run_cmd("git pull", environment=True)
-    
+
     # Finds the path to your dependencies
     for sitedir in site.getsitepackages():
         if "site-packages" in sitedir:
