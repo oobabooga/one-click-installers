@@ -51,7 +51,7 @@ def run_cmd(cmd, assert_success=False, environment=False, capture_output=False, 
             cmd = ". \"" + conda_sh_path + "\" && conda activate \"" + conda_env_path + "\" && " + cmd
 
     # Run shell commands
-    result = subprocess.run(cmd, shell=True, capture_output=capture_output, env=env)
+    result = subprocess.run(cmd, shell=True, capture_output=capture_output, env=env, executable="/bin/bash")
 
     # Assert the command ran successfully
     if assert_success and result.returncode != 0:
