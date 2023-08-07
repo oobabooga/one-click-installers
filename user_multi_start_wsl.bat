@@ -1,16 +1,31 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Choosing the Models to run simultanously in distinct processes: uncomment and edit the lines below to set up instances with table indices incrementing from 0 and distinct ports. 
+:: Approximate size in VRAM is given in the comments. Try not to max out your GPU VRAM. 
+:: Note that GGML come with various quantizers of different sizes and capabilities. Reference data is for best mixed 4 bits quantization available.
+:: Default value are chosen to fit comfortably in a 16 GB VRAM GPU (e.g. NVidia 3080).
+
 :: Instance Data: LISTEN_PORT, API_BLOCKING_PORT, API_STREAMING_PORT, STATIC_FLAGS
-set "INSTANCE_DATA[0]=46527,42768,42769,--model TheBloke_vicuna-7B-v1.5-GPTQ --loader gptq-for-llama  --wbits 4 --groupsize 128 --monkey-patch --xformers --n-gpu-layers 200000"
-set "INSTANCE_DATA[1]=36527,32768,32769,--model TheBloke_vicuna-7B-v1.3-GPTQ --loader gptq-for-llama  --wbits 4 --groupsize 128 --monkey-patch --xformers --n-gpu-layers 200000"
-::set "INSTANCE_DATA[1]=1,2,3,4"
 
-
-
-echo Debug: Array 0: !INSTANCE_DATA[0]!
-echo Debug: Array 1: !INSTANCE_DATA[1]!
+:: GPT2 : 900 MB
+set "INSTANCE_DATA[0]=7860,5000,5005,--model gpt2 --loader transformers --monkey-patch --xformers --n-gpu-layers 200000"
+:: Pythia 1.4B : 3.4 GB
+::set "INSTANCE_DATA[0]=7861,5001,5006,--model EleutherAI_pythia-1.4b-deduped --loader transformers --monkey-patch --xformers --n-gpu-layers 200000"
+:: Orca Mini 3B q4 GGML: 4 GB
+set "INSTANCE_DATA[1]=7862,5002,5007,--model TheBloke_orca_mini_3B-GGML --loader llama.cpp --monkey-patch --xformers --n-gpu-layers 200000"
+:: Red Pajama 3B : 6.2 GB
+:: set "INSTANCE_DATA[1]=7863,5003,5008,--model togethercomputer_RedPajama-INCITE-Chat-3B-v1 --loader transformers --monkey-patch --xformers --n-gpu-layers 200000" 
+:: Stable Beluga 7B q4 GGML : 6.2 GB
+set "INSTANCE_DATA[2]=7864,5004,5009,--model TheBloke_StableBeluga-7B-GGML --loader llama.cpp --monkey-patch --xformers --n-gpu-layers 200000"
+:: Stable Beluga 13B q4 GGML : 10.3 GB
+::set "INSTANCE_DATA[3]=7865,5005,5010,--model TheBloke_StableBeluga-13B-GGML --loader llama.cpp --monkey-patch --xformers --n-gpu-layers 200000"
 :: ... add more instances as needed ...
+
+
+::echo Debug: Array 0: !INSTANCE_DATA[0]!
+::echo Debug: Array 1: !INSTANCE_DATA[1]!
+
 
 :: Detect WSL IP address
 FOR /F %%a IN ('wsl -e bash -c "ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -f1 -d '/'"') DO SET WslIP=%%a
@@ -54,17 +69,12 @@ for /L %%j in (0,1,9) do (
         netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=!API_BLOCKING_PORT! connectaddress=%WslIP% connectport=!API_BLOCKING_PORT!
         netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=!API_STREAMING_PORT! connectaddress=%WslIP% connectport=!API_STREAMING_PORT!
     
-
-    
     
         :: Set the environment variable for flags
         set OOBABOOGA_FLAGS=--listen --api --verbose !STATIC_FLAGS! --listen-host "0.0.0.0" --listen-port "!LISTEN_PORT!" --api-blocking-port "!API_BLOCKING_PORT!" --api-streaming-port   "!API_STREAMING_PORT!"
     
-        set "WSLENV=OOBABOOGA_FLAGS/u"
-
         :: Export environment variables to WSL and call the original script
-        wsl -e bash -c "export OOBABOOGA_FLAGS='"'!OOBABOOGA_FLAGS!'"'"
-    
+        set "WSLENV=OOBABOOGA_FLAGS/u"
 
         echo About to launch with:
         echo OOBABOOGA_FLAGS: !OOBABOOGA_FLAGS!
