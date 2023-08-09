@@ -200,16 +200,21 @@ def update_dependencies(initial_installation=False):
     if sys.platform.startswith("linux") and not os.path.exists(f"{conda_env_path}/lib64"):
         run_cmd(f'ln -s "{conda_env_path}/lib" "{conda_env_path}/lib64"', environment=True)
 
-    # oobabooga fork requires min compute of 6.0
+    # oobabooga fork requires min compute of 6.0   True if failed to check
     gptq_min_compute = 60
-    gptq_min_compute_check = any(int(compute) >= gptq_min_compute for compute in compute_array.stdout.decode('utf-8').split(',')) if compute_array.returncode == 0 else False
+    gptq_min_compute_check = any(int(compute) >= gptq_min_compute for compute in compute_array.stdout.decode('utf-8').split(',')) if compute_array.returncode == 0 else True
+    if not gptq_min_compute_check:
+        if sys.platform.startswith("linux"):
+            wheel = 'https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/832e220d6dbf11bec5eaa8b221a52c1c854d2a25/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl'
+        else:
+            wheel = 'https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/832e220d6dbf11bec5eaa8b221a52c1c854d2a25/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl'
 
     # Install GPTQ-for-LLaMa which enables 4bit CUDA quantization
     if not os.path.exists("GPTQ-for-LLaMa/"):
         # Install oobabooga fork if min compute met or if failed to check
         if '+rocm' in torver:
             run_cmd("git clone https://github.com/WapaMario63/GPTQ-for-LLaMa-ROCm.git GPTQ-for-LLaMa -b rocm", assert_success=True, environment=True)
-        elif gptq_min_compute_check or compute_array.returncode != 0:
+        elif gptq_min_compute_check:
             run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
         else:
             run_cmd("git clone https://github.com/qwopqwop200/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
@@ -228,58 +233,28 @@ def update_dependencies(initial_installation=False):
             if run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/auto_gptq-0.3.2%2Brocm5.4.2-cp310-cp310-linux_x86_64.whl --force-reinstall --no-deps", environment=True).returncode != 0:
                 print_big_message("ERROR: AutoGPTQ wheel installation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
 
-    # Install GPTQ-for-LLaMa dependencies
+    # Update GPTQ-for-LLaMa scripts
     os.chdir("GPTQ-for-LLaMa")
     run_cmd("git pull", environment=True)
 
-    # Finds the path to your dependencies
-    for sitedir in site.getsitepackages():
-        if "site-packages" in sitedir:
-            site_packages_path = sitedir
-            break
-
-    # This path is critical to installing the following dependencies
-    if site_packages_path is None:
-        print("Could not find the path to your Python packages. Exiting...")
-        sys.exit()
-
-    # Compile and install GPTQ-for-LLaMa
+    # Compile and install GPTQ-for-LLaMa for ROCm
     if '+rocm' in torver:
         if os.path.exists('setup_rocm.py'):
             os.replace("setup_rocm.py", "setup.py")
-    elif os.path.exists('setup_cuda.py'):
-        os.rename("setup_cuda.py", "setup.py")
-
-    build_gptq = run_cmd("python -m pip install .", environment=True).returncode == 0
-
-    # Wheel installation can fail while in the build directory of a package with the same name
-    os.chdir("..")
-
-    # If the path does not exist or if command returncode is not 0, then the install failed or was potentially installed outside env
-    quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
-    quant_cuda_path = glob.glob(quant_cuda_path_regex)
-    if not build_gptq:
-        # Attempt installation via alternative, Windows/Linux-specific method
-        if sys.platform.startswith("win") or sys.platform.startswith("linux") and not quant_cuda_path:
+        build_gptq = run_cmd("python -m pip install .", environment=True).returncode == 0
+        # Wheel installation can fail while in the build directory of a package with the same name
+        os.chdir("..")
+        if not build_gptq:
             print_big_message("WARNING: GPTQ-for-LLaMa compilation failed, but this is FINE and can be ignored!\nThe installer will proceed to install a pre-compiled wheel.")
-            if '+rocm' in torver:
-                wheel = 'ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl'
-            else:
-                wheel = f"{'' if gptq_min_compute_check or compute_array.returncode != 0 else '832e220d6dbf11bec5eaa8b221a52c1c854d2a25/'}quant_cuda-0.0.0-cp310-cp310-{'linux_x86_64' if sys.platform.startswith('linux') else 'win_amd64'}.whl"
-            url = f"https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/{'Linux-x64' if sys.platform.startswith('linux') else 'main'}/" + wheel
-
+            url = "https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl"
             result = run_cmd("python -m pip install " + url, environment=True)
-            if result.returncode == 0 and glob.glob(quant_cuda_path_regex):
+            if result.returncode == 0:
                 print("Wheel installation success!")
             else:
                 print("ERROR: GPTQ wheel installation failed. You will not be able to use GPTQ-based models.")
-        elif quant_cuda_path:
-            print_big_message("WARNING: GPTQ-for-LLaMa compilation failed, but this is FINE and can be ignored!\nquant_cuda has already been installed.")
         else:
             print("ERROR: GPTQ CUDA kernel compilation failed.")
             print("You will not be able to use GPTQ-based models with GPTQ-for-LLaMa.")
-
-        print("Continuing with install..")
 
     clear_cache()
 
