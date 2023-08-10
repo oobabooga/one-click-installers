@@ -125,10 +125,10 @@ def update_dependencies(initial_installation=False):
     os.chdir("text-generation-webui")
     run_cmd("git pull", assert_success=True, environment=True)
 
+    textgen_requirements = open("requirements.txt").read().splitlines()
+
     # Workaround for git+ packages not updating properly  Also store requirements.txt for later use
-    with open("requirements.txt") as f:
-        textgen_requirements = f.read()
-        git_requirements = [req for req in textgen_requirements.splitlines() if req.startswith("git+")]
+    git_requirements = [req for req in textgen_requirements if req.startswith("git+")]
 
     # Loop through each "git+" requirement and uninstall it
     for req in git_requirements:
@@ -164,17 +164,6 @@ def update_dependencies(initial_installation=False):
         clear_cache()
         return
 
-    # Get GPU CUDA/compute support
-    if '+cu' in torver:
-        nvcc_device_query = "__nvcc_device_query" if not sys.platform.startswith("win") else "__nvcc_device_query.exe"
-        compute_array = run_cmd(os.path.join(conda_env_path, "bin", nvcc_device_query), environment=True, capture_output=True)
-    else:
-        compute_array = type('obj', (object,), {'stdout': b'', 'returncode': 1})
-
-    # Fix a bitsandbytes compatibility issue with Linux
-    # if sys.platform.startswith("linux"):
-    #     shutil.copy(os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cuda117.so"), os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cpu.so"))
-
     if not os.path.exists("repositories/"):
         os.mkdir("repositories")
 
@@ -196,28 +185,9 @@ def update_dependencies(initial_installation=False):
         if 'rocm5.4.2-cp310-cp310-linux_x86_64.whl' in exllama_rocm:
             run_cmd("python -m pip install " + exllama_rocm, environment=True)
 
-    # Fix build issue with exllama in Linux/WSL
+    # Fix JIT compile issue with exllama in Linux/WSL
     if sys.platform.startswith("linux") and not os.path.exists(f"{conda_env_path}/lib64"):
         run_cmd(f'ln -s "{conda_env_path}/lib" "{conda_env_path}/lib64"', environment=True)
-
-    # oobabooga fork requires min compute of 6.0   True if failed to check
-    gptq_min_compute = 60
-    gptq_min_compute_check = any(int(compute) >= gptq_min_compute for compute in compute_array.stdout.decode('utf-8').split(',')) if compute_array.returncode == 0 else True
-    if not gptq_min_compute_check:
-        if sys.platform.startswith("linux"):
-            wheel = 'https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/832e220d6dbf11bec5eaa8b221a52c1c854d2a25/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl'
-        else:
-            wheel = 'https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/main/832e220d6dbf11bec5eaa8b221a52c1c854d2a25/quant_cuda-0.0.0-cp310-cp310-win_amd64.whl'
-
-    # Install GPTQ-for-LLaMa which enables 4bit CUDA quantization
-    if not os.path.exists("GPTQ-for-LLaMa/"):
-        # Install oobabooga fork if min compute met or if failed to check
-        if '+rocm' in torver:
-            run_cmd("git clone https://github.com/WapaMario63/GPTQ-for-LLaMa-ROCm.git GPTQ-for-LLaMa -b rocm", assert_success=True, environment=True)
-        elif gptq_min_compute_check:
-            run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
-        else:
-            run_cmd("git clone https://github.com/qwopqwop200/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
 
     # On some Linux distributions, g++ may not exist or be the wrong version to compile GPTQ-for-LLaMa
     if sys.platform.startswith("linux"):
@@ -228,32 +198,19 @@ def update_dependencies(initial_installation=False):
 
     # Install/Update ROCm AutoGPTQ for AMD GPUs
     if '+rocm' in torver:
-        if run_cmd("[ -d ./AutoGPTQ-rocm ] && rm -rfd ./AutoGPTQ-rocm; git clone https://github.com/jllllll/AutoGPTQ.git ./AutoGPTQ-rocm -b rocm && cp ./AutoGPTQ-rocm/setup_rocm.py ./AutoGPTQ-rocm/setup.py && python -m pip install ./AutoGPTQ-rocm --force-reinstall --no-deps", environment=True).returncode != 0:
-            print_big_message("WARNING: AutoGPTQ kernel compilation failed!\n       The installer will proceed to install a pre-compiled wheel.")
-            if run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/auto_gptq-0.3.2%2Brocm5.4.2-cp310-cp310-linux_x86_64.whl --force-reinstall --no-deps", environment=True).returncode != 0:
+        auto_gptq_version = [req for req in textgen_requirements if req.startswith('https://github.com/PanQiWei/AutoGPTQ/releases/download/')][0].split('/')[7]
+        auto_gptq_wheel =  run_cmd(f'curl -s https://api.github.com/repos/PanQiWei/AutoGPTQ/releases/tags/{auto_gptq_version} | grep browser_download_url | grep rocm5.4.2-cp310-cp310-linux_x86_64.whl | cut -d : -f 2,3 | tr -d \'"\'', environment=True, capture_output=True).stdout.decode('utf-8')
+            if not auto_gptq_wheel and run_cmd(f"python -m pip install {auto_gptq_wheel} --force-reinstall --no-deps", environment=True).returncode != 0:
                 print_big_message("ERROR: AutoGPTQ wheel installation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
 
-    # Update GPTQ-for-LLaMa scripts
-    os.chdir("GPTQ-for-LLaMa")
-    run_cmd("git pull", environment=True)
-
-    # Compile and install GPTQ-for-LLaMa for ROCm
+    # Install GPTQ-for-LLaMa for ROCm
     if '+rocm' in torver:
-        if os.path.exists('setup_rocm.py'):
-            os.replace("setup_rocm.py", "setup.py")
-        build_gptq = run_cmd("python -m pip install .", environment=True).returncode == 0
-        # Wheel installation can fail while in the build directory of a package with the same name
-        os.chdir("..")
-        if not build_gptq:
-            print_big_message("WARNING: GPTQ-for-LLaMa compilation failed, but this is FINE and can be ignored!\nThe installer will proceed to install a pre-compiled wheel.")
-            url = "https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl"
-            result = run_cmd("python -m pip install " + url, environment=True)
-            if result.returncode == 0:
-                print("Wheel installation success!")
-            else:
-                print("ERROR: GPTQ wheel installation failed. You will not be able to use GPTQ-based models.")
+        gptq_wheel =  run_cmd(f'curl -s https://api.github.com/repos/jllllll/GPTQ-for-LLaMa-CUDA/releases/latest | grep browser_download_url | grep rocm5.4.2-cp310-cp310-linux_x86_64.whl | cut -d : -f 2,3 | tr -d \'"\'', environment=True, capture_output=True).stdout.decode('utf-8')
+        install_gptq = run_cmd("python -m pip install " + gptq_wheel, environment=True).returncode == 0
+        if install_gptq:
+            print("Wheel installation success!")
         else:
-            print("ERROR: GPTQ CUDA kernel compilation failed.")
+            print("ERROR: GPTQ wheel installation failed.")
             print("You will not be able to use GPTQ-based models with GPTQ-for-LLaMa.")
 
     clear_cache()
