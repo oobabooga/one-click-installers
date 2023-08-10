@@ -1,8 +1,6 @@
 import argparse
 import glob
 import os
-import re
-import site
 import subprocess
 import sys
 
@@ -199,13 +197,13 @@ def update_dependencies(initial_installation=False):
     # Install/Update ROCm AutoGPTQ for AMD GPUs
     if '+rocm' in torver:
         auto_gptq_version = [req for req in textgen_requirements if req.startswith('https://github.com/PanQiWei/AutoGPTQ/releases/download/')][0].split('/')[7]
-        auto_gptq_wheel =  run_cmd(f'curl -s https://api.github.com/repos/PanQiWei/AutoGPTQ/releases/tags/{auto_gptq_version} | grep browser_download_url | grep rocm5.4.2-cp310-cp310-linux_x86_64.whl | cut -d : -f 2,3 | tr -d \'"\'', environment=True, capture_output=True).stdout.decode('utf-8')
-            if not auto_gptq_wheel and run_cmd(f"python -m pip install {auto_gptq_wheel} --force-reinstall --no-deps", environment=True).returncode != 0:
-                print_big_message("ERROR: AutoGPTQ wheel installation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
+        auto_gptq_wheel = run_cmd(f'curl -s https://api.github.com/repos/PanQiWei/AutoGPTQ/releases/tags/{auto_gptq_version} | grep browser_download_url | grep rocm5.4.2-cp310-cp310-linux_x86_64.whl | cut -d : -f 2,3 | tr -d \'"\'', environment=True, capture_output=True).stdout.decode('utf-8')
+        if not auto_gptq_wheel and run_cmd(f"python -m pip install {auto_gptq_wheel} --force-reinstall --no-deps", environment=True).returncode != 0:
+            print_big_message("ERROR: AutoGPTQ wheel installation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
 
     # Install GPTQ-for-LLaMa for ROCm
     if '+rocm' in torver:
-        gptq_wheel =  run_cmd(f'curl -s https://api.github.com/repos/jllllll/GPTQ-for-LLaMa-CUDA/releases/latest | grep browser_download_url | grep rocm5.4.2-cp310-cp310-linux_x86_64.whl | cut -d : -f 2,3 | tr -d \'"\'', environment=True, capture_output=True).stdout.decode('utf-8')
+        gptq_wheel = run_cmd('curl -s https://api.github.com/repos/jllllll/GPTQ-for-LLaMa-CUDA/releases/latest | grep browser_download_url | grep rocm5.4.2-cp310-cp310-linux_x86_64.whl | cut -d : -f 2,3 | tr -d \'"\'', environment=True, capture_output=True).stdout.decode('utf-8')
         install_gptq = run_cmd("python -m pip install " + gptq_wheel, environment=True).returncode == 0
         if install_gptq:
             print("Wheel installation success!")
