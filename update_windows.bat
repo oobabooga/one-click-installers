@@ -1,5 +1,10 @@
 @echo off
 
+@echo off
+
+:: Check for updates
+call python check_for_updates.py
+
 cd /D "%~dp0"
 
 set PATH=%PATH%;%SystemRoot%\system32
