@@ -18,9 +18,6 @@ else:
     if os.path.exists(cmd_flags_path):
         with open(cmd_flags_path, 'r') as f:
             CMD_FLAGS = ' '.join(line.strip() for line in f if line.strip() and not line.strip().startswith('#'))
-        if CMD_FLAGS:
-            print("The following flags have been taken from the file 'CMD_FLAGS.txt':")
-            print(CMD_FLAGS)
     else:
         CMD_FLAGS = ''
 
