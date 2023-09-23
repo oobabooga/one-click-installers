@@ -1,8 +1,6 @@
 import argparse
 import glob
 import os
-import re
-import site
 import subprocess
 import sys
 
@@ -18,9 +16,10 @@ if "OOBABOOGA_FLAGS" in os.environ:
 else:
     cmd_flags_path = os.path.join(script_dir, "CMD_FLAGS.txt")
     if os.path.exists(cmd_flags_path):
-        CMD_FLAGS = open(cmd_flags_path, 'r').read().strip()
+        with open(cmd_flags_path, 'r') as f:
+            CMD_FLAGS = ' '.join(line.strip() for line in f if line.strip() and not line.strip().startswith('#'))
     else:
-        CMD_FLAGS = '--chat'
+        CMD_FLAGS = ''
 
 
 # Remove the '# ' from the following lines as needed for your AMD GPU on Linux
@@ -80,9 +79,9 @@ def clear_cache():
 
 
 def install_dependencies():
-    if "OOBABOOGA_INSTALL_GPU_CHOICE" in os.environ:
-        print("Continue installing using GPU choice from ENV var OOBABOOGA_INSTALL_GPU_CHOICE...")
-        gpuchoice = os.environ["OOBABOOGA_INSTALL_GPU_CHOICE"].lower()
+    if "GPU_CHOICE" in os.environ:
+        gpuchoice = os.environ["GPU_CHOICE"].lower()
+        print(f"Selected GPU choice \"{choice}\" based on the GPU_CHOICE environment variable.")
     else:
         # Select your GPU or, choose to run in CPU mode
         print("What is your GPU")
@@ -90,9 +89,12 @@ def install_dependencies():
         print("A) NVIDIA")
         print("B) AMD (Linux/MacOS only. Requires ROCm SDK 5.4.2/5.4.3 on Linux)")
         print("C) Apple M Series")
-        print("D) None (I want to run in CPU mode)")
+        print("D) None (I want to run models in CPU mode)")
         print()
         gpuchoice = input("Input> ").lower()
+        while gpuchoice not in ['a', 'b', 'c', 'd']:
+            print("Invalid choice. Please try again.")
+            gpuchoice = input("Input> ").lower()
 
     if gpuchoice == "d":
         print_big_message("Once the installation ends, make sure to open CMD_FLAGS.txt with\na text editor and add the --cpu flag.")
@@ -114,10 +116,6 @@ def install_dependencies():
         else:
             run_cmd("conda install -y -k ninja git && python -m pip install torch torchvision torchaudio", assert_success=True, environment=True)
 
-    else:
-        print("Invalid choice. Exiting...")
-        sys.exit()
-
     # Clone webui to our computer
     run_cmd("git clone https://github.com/oobabooga/text-generation-webui.git", assert_success=True, environment=True)
 
@@ -129,10 +127,21 @@ def update_dependencies(initial_installation=False):
     os.chdir("text-generation-webui")
     run_cmd("git pull", assert_success=True, environment=True)
 
+    # Install the extensions dependencies (only on the first install)
+    if initial_installation:
+        extensions = next(os.walk("extensions"))[1]
+        for extension in extensions:
+            if extension in ['superbooga']:  # No wheels available for dependencies
+                continue
+
+            extension_req_path = os.path.join("extensions", extension, "requirements.txt")
+            if os.path.exists(extension_req_path):
+                run_cmd("python -m pip install -r " + extension_req_path + " --upgrade", assert_success=True, environment=True)
+
+    textgen_requirements = open("requirements.txt").read().splitlines()
+
     # Workaround for git+ packages not updating properly  Also store requirements.txt for later use
-    with open("requirements.txt") as f:
-        textgen_requirements = f.read()
-        git_requirements = [req for req in textgen_requirements.splitlines() if req.startswith("git+")]
+    git_requirements = [req for req in textgen_requirements if req.startswith("git+")]
 
     # Loop through each "git+" requirement and uninstall it
     for req in git_requirements:
@@ -147,17 +156,6 @@ def update_dependencies(initial_installation=False):
     # Installs/Updates the project dependencies
     run_cmd("python -m pip install -r requirements.txt --upgrade", assert_success=True, environment=True)
 
-    # Installs the extensions dependencies (only on the first install)
-    if initial_installation:
-        extensions = next(os.walk("extensions"))[1]
-        for extension in extensions:
-            if extension in ['superbooga']:  # No wheels available for dependencies
-                continue
-
-            extension_req_path = os.path.join("extensions", extension, "requirements.txt")
-            if os.path.exists(extension_req_path):
-                run_cmd("python -m pip install -r " + extension_req_path + " --upgrade", assert_success=True, environment=True)
-
     # The following dependencies are for CUDA, not CPU
     # Parse output of 'pip show torch' to determine torch version
     torver_cmd = run_cmd("python -m pip show torch", assert_success=True, environment=True, capture_output=True)
@@ -167,17 +165,6 @@ def update_dependencies(initial_installation=False):
     if '+cu' not in torver and '+rocm' not in torver and run_cmd("conda list -f pytorch-cuda | grep pytorch-cuda", environment=True, capture_output=True).returncode == 1:
         clear_cache()
         return
-
-    # Get GPU CUDA/compute support
-    if '+cu' in torver:
-        nvcc_device_query = "__nvcc_device_query" if not sys.platform.startswith("win") else "__nvcc_device_query.exe"
-        compute_array = run_cmd(os.path.join(conda_env_path, "bin", nvcc_device_query), environment=True, capture_output=True)
-    else:
-        compute_array = type('obj', (object,), {'stdout': b'', 'returncode': 1})
-
-    # Fix a bitsandbytes compatibility issue with Linux
-    # if sys.platform.startswith("linux"):
-    #     shutil.copy(os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cuda117.so"), os.path.join(site_packages_path, "bitsandbytes", "libbitsandbytes_cpu.so"))
 
     if not os.path.exists("repositories/"):
         os.mkdir("repositories")
@@ -200,23 +187,9 @@ def update_dependencies(initial_installation=False):
         if 'rocm5.4.2-cp310-cp310-linux_x86_64.whl' in exllama_rocm:
             run_cmd("python -m pip install " + exllama_rocm, environment=True)
 
-    # Fix build issue with exllama in Linux/WSL
+    # Fix JIT compile issue with exllama in Linux/WSL
     if sys.platform.startswith("linux") and not os.path.exists(f"{conda_env_path}/lib64"):
         run_cmd(f'ln -s "{conda_env_path}/lib" "{conda_env_path}/lib64"', environment=True)
-
-    # oobabooga fork requires min compute of 6.0
-    gptq_min_compute = 60
-    gptq_min_compute_check = any(int(compute) >= gptq_min_compute for compute in compute_array.stdout.decode('utf-8').split(',')) if compute_array.returncode == 0 else False
-
-    # Install GPTQ-for-LLaMa which enables 4bit CUDA quantization
-    if not os.path.exists("GPTQ-for-LLaMa/"):
-        # Install oobabooga fork if min compute met or if failed to check
-        if '+rocm' in torver:
-            run_cmd("git clone https://github.com/WapaMario63/GPTQ-for-LLaMa-ROCm.git GPTQ-for-LLaMa -b rocm", assert_success=True, environment=True)
-        elif gptq_min_compute_check or compute_array.returncode != 0:
-            run_cmd("git clone https://github.com/oobabooga/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
-        else:
-            run_cmd("git clone https://github.com/qwopqwop200/GPTQ-for-LLaMa.git -b cuda", assert_success=True, environment=True)
 
     # On some Linux distributions, g++ may not exist or be the wrong version to compile GPTQ-for-LLaMa
     if sys.platform.startswith("linux"):
@@ -227,63 +200,20 @@ def update_dependencies(initial_installation=False):
 
     # Install/Update ROCm AutoGPTQ for AMD GPUs
     if '+rocm' in torver:
-        if run_cmd("[ -d ./AutoGPTQ-rocm ] && rm -rfd ./AutoGPTQ-rocm; git clone https://github.com/jllllll/AutoGPTQ.git ./AutoGPTQ-rocm -b rocm && cp ./AutoGPTQ-rocm/setup_rocm.py ./AutoGPTQ-rocm/setup.py && python -m pip install ./AutoGPTQ-rocm --force-reinstall --no-deps", environment=True).returncode != 0:
-            print_big_message("WARNING: AutoGPTQ kernel compilation failed!\n       The installer will proceed to install a pre-compiled wheel.")
-            if run_cmd("python -m pip install https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/Linux-x64/ROCm-5.4.2/auto_gptq-0.3.2%2Brocm5.4.2-cp310-cp310-linux_x86_64.whl --force-reinstall --no-deps", environment=True).returncode != 0:
-                print_big_message("ERROR: AutoGPTQ wheel installation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
+        auto_gptq_version = [req for req in textgen_requirements if req.startswith('https://github.com/PanQiWei/AutoGPTQ/releases/download/')][0].split('/')[7]
+        auto_gptq_wheel = run_cmd(f'curl -s https://api.github.com/repos/PanQiWei/AutoGPTQ/releases/tags/{auto_gptq_version} | grep browser_download_url | grep rocm5.4.2-cp310-cp310-linux_x86_64.whl | cut -d : -f 2,3 | tr -d \'"\'', environment=True, capture_output=True).stdout.decode('utf-8')
+        if not auto_gptq_wheel and run_cmd(f"python -m pip install {auto_gptq_wheel} --force-reinstall --no-deps", environment=True).returncode != 0:
+            print_big_message("ERROR: AutoGPTQ wheel installation failed!\n       You will not be able to use GPTQ-based models with AutoGPTQ.")
 
-    # Install GPTQ-for-LLaMa dependencies
-    os.chdir("GPTQ-for-LLaMa")
-    run_cmd("git pull", environment=True)
-
-    # Finds the path to your dependencies
-    for sitedir in site.getsitepackages():
-        if "site-packages" in sitedir:
-            site_packages_path = sitedir
-            break
-
-    # This path is critical to installing the following dependencies
-    if site_packages_path is None:
-        print("Could not find the path to your Python packages. Exiting...")
-        sys.exit()
-
-    # Compile and install GPTQ-for-LLaMa
+    # Install GPTQ-for-LLaMa for ROCm
     if '+rocm' in torver:
-        if os.path.exists('setup_rocm.py'):
-            os.replace("setup_rocm.py", "setup.py")
-    elif os.path.exists('setup_cuda.py'):
-        os.rename("setup_cuda.py", "setup.py")
-
-    build_gptq = run_cmd("python -m pip install .", environment=True).returncode == 0
-
-    # Wheel installation can fail while in the build directory of a package with the same name
-    os.chdir("..")
-
-    # If the path does not exist or if command returncode is not 0, then the install failed or was potentially installed outside env
-    quant_cuda_path_regex = os.path.join(site_packages_path, "quant_cuda*/")
-    quant_cuda_path = glob.glob(quant_cuda_path_regex)
-    if not build_gptq:
-        # Attempt installation via alternative, Windows/Linux-specific method
-        if sys.platform.startswith("win") or sys.platform.startswith("linux") and not quant_cuda_path:
-            print_big_message("WARNING: GPTQ-for-LLaMa compilation failed, but this is FINE and can be ignored!\nThe installer will proceed to install a pre-compiled wheel.")
-            if '+rocm' in torver:
-                wheel = 'ROCm-5.4.2/quant_cuda-0.0.0-cp310-cp310-linux_x86_64.whl'
-            else:
-                wheel = f"{'' if gptq_min_compute_check or compute_array.returncode != 0 else '832e220d6dbf11bec5eaa8b221a52c1c854d2a25/'}quant_cuda-0.0.0-cp310-cp310-{'linux_x86_64' if sys.platform.startswith('linux') else 'win_amd64'}.whl"
-            url = f"https://github.com/jllllll/GPTQ-for-LLaMa-Wheels/raw/{'Linux-x64' if sys.platform.startswith('linux') else 'main'}/" + wheel
-
-            result = run_cmd("python -m pip install " + url, environment=True)
-            if result.returncode == 0 and glob.glob(quant_cuda_path_regex):
-                print("Wheel installation success!")
-            else:
-                print("ERROR: GPTQ wheel installation failed. You will not be able to use GPTQ-based models.")
-        elif quant_cuda_path:
-            print_big_message("WARNING: GPTQ-for-LLaMa compilation failed, but this is FINE and can be ignored!\nquant_cuda has already been installed.")
+        gptq_wheel = run_cmd('curl -s https://api.github.com/repos/jllllll/GPTQ-for-LLaMa-CUDA/releases/latest | grep browser_download_url | grep rocm5.4.2-cp310-cp310-linux_x86_64.whl | cut -d : -f 2,3 | tr -d \'"\'', environment=True, capture_output=True).stdout.decode('utf-8')
+        install_gptq = run_cmd("python -m pip install " + gptq_wheel, environment=True).returncode == 0
+        if install_gptq:
+            print("Wheel installation success!")
         else:
-            print("ERROR: GPTQ CUDA kernel compilation failed.")
+            print("ERROR: GPTQ wheel installation failed.")
             print("You will not be able to use GPTQ-based models with GPTQ-for-LLaMa.")
-
-        print("Continuing with install..")
 
     clear_cache()
 
@@ -314,9 +244,9 @@ if __name__ == "__main__":
             install_dependencies()
             os.chdir(script_dir)
 
-        if "OOBABOOGA_LAUNCH_AFTER_INSTALL" in os.environ:
-            if os.environ["OOBABOOGA_LAUNCH_AFTER_INSTALL"].lower() in ("no", "n", "false", "0", "f", "off"):
-                print("Install finished successfully and exiting due to OOBABOOGA_LAUNCH_AFTER_INSTALL.")
+        if "LAUNCH_AFTER_INSTALL" in os.environ:
+            if os.environ["LAUNCH_AFTER_INSTALL"].lower() in ("no", "n", "false", "0", "f", "off"):
+                print("Install finished successfully and exiting due to LAUNCH_AFTER_INSTALL.")
                 sys.exit()
 
         # Check if a model has been downloaded yet
