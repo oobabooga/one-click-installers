@@ -1,3 +1,5 @@
+# This repository has been merged into https://github.com/oobabooga/text-generation-webui -- let's continue working on it there!
+
 # One-click installers
 
 These are automated installers for [oobabooga/text-generation-webui](https://github.com/oobabooga/text-generation-webui).
