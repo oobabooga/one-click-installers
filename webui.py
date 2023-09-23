@@ -79,18 +79,22 @@ def clear_cache():
 
 
 def install_dependencies():
-    # Select your GPU or, choose to run in CPU mode
-    print("What is your GPU")
-    print()
-    print("A) NVIDIA")
-    print("B) AMD (Linux/MacOS only. Requires ROCm SDK 5.4.2/5.4.3 on Linux)")
-    print("C) Apple M Series")
-    print("D) None (I want to run models in CPU mode)")
-    print()
-    gpuchoice = input("Input> ").lower()
-    while gpuchoice not in ['a', 'b', 'c', 'd']:
-        print("Invalid choice. Please try again.")
+    if "GPU_CHOICE" in os.environ:
+        gpuchoice = os.environ["GPU_CHOICE"].lower()
+        print(f"Selected GPU choice \"{gpuchoice}\" based on the GPU_CHOICE environment variable.")
+    else:
+        # Select your GPU or, choose to run in CPU mode
+        print("What is your GPU")
+        print()
+        print("A) NVIDIA")
+        print("B) AMD (Linux/MacOS only. Requires ROCm SDK 5.4.2/5.4.3 on Linux)")
+        print("C) Apple M Series")
+        print("D) None (I want to run models in CPU mode)")
+        print()
         gpuchoice = input("Input> ").lower()
+        while gpuchoice not in ['a', 'b', 'c', 'd']:
+            print("Invalid choice. Please try again.")
+            gpuchoice = input("Input> ").lower()
 
     if gpuchoice == "d":
         print_big_message("Once the installation ends, make sure to open CMD_FLAGS.txt with\na text editor and add the --cpu flag.")
@@ -239,6 +243,10 @@ if __name__ == "__main__":
         if not os.path.exists("text-generation-webui/"):
             install_dependencies()
             os.chdir(script_dir)
+
+        if os.environ.get("LAUNCH_AFTER_INSTALL", "").lower() in ("no", "n", "false", "0", "f", "off"):
+            print("Install finished successfully and exiting due to LAUNCH_AFTER_INSTALL.")
+            sys.exit()
 
         # Check if a model has been downloaded yet
         if len([item for item in glob.glob('text-generation-webui/models/*') if not item.endswith(('.txt', '.yaml'))]) == 0:
